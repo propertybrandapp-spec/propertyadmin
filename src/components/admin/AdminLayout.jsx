@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { fetchNotifications, formatRelativeTime } from "../../lib/notifications";
 
 // URL of the public marketing site — set VITE_MAIN_SITE_URL in .env.
 // Falls back to "/" (old same-domain behavior) if it's not configured.
@@ -177,12 +178,54 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
 }
 
 // ── Topbar ────────────────────────────────────────────────────────────────────
-function Topbar({ title, subtitle, onMenuClick, onLogout, adminProfile }) {
+function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfile }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(true);
+  // Read state is session-only (kept in memory, not persisted) — there's no
+  // notifications table yet to store per-admin read receipts in. Resets on
+  // page reload; see lib/notifications.js for the tradeoffs.
+  const [readIds, setReadIds] = useState(new Set());
 
   const initials = adminProfile?.avatar_initials || adminProfile?.full_name?.charAt(0) || "A";
   const displayName = adminProfile?.full_name || "Admin";
+
+  const loadNotifications = useCallback(async () => {
+    const items = await fetchNotifications();
+    setNotifications(items);
+    setNotifLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+    // Refresh in the background every 60s so the badge count stays current
+    // even if the admin never closes the tab.
+    const interval = setInterval(loadNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
+
+  const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
+
+  function openNotifications() {
+    setNotifOpen((open) => !open);
+    setProfileOpen(false);
+  }
+
+  function handleNotificationClick(n) {
+    setReadIds((prev) => new Set(prev).add(n.id));
+    setNotifOpen(false);
+    if (n.page) onNavigate?.(n.page);
+  }
+
+  function markAllRead() {
+    setReadIds(new Set(notifications.map((n) => n.id)));
+  }
+
+  function goTo(page) {
+    setProfileOpen(false);
+    onNavigate?.(page);
+  }
 
   return (
     <header
@@ -225,38 +268,57 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, adminProfile }) {
         {/* Notifications */}
         <div className="relative">
           <button
-            onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
+            onClick={openNotifications}
             className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
             style={{ background: "#F2F4F6" }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: "#15191C" }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            <span
-              className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
-              style={{ background: "#BA0D0B", color: "#FFFFFF" }}
-            >
-              5
-            </span>
+            {unreadCount > 0 && (
+              <span
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
+                style={{ background: "#BA0D0B", color: "#FFFFFF" }}
+              >
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
           {notifOpen && (
             <div
               className="absolute right-0 top-full mt-2 w-72 rounded-xl shadow-2xl z-50 overflow-hidden"
               style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}
             >
-              <div className="px-4 py-3" style={{ borderBottom: "1px solid #E5E8EB" }}>
+              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #E5E8EB" }}>
                 <p className="text-sm font-bold" style={{ color: "#15191C" }}>Notifications</p>
+                {unreadCount > 0 && (
+                  <button onClick={markAllRead} className="text-xs font-semibold" style={{ color: "#2C9DD5" }}>
+                    Mark all read
+                  </button>
+                )}
               </div>
-              {[
-                { text: "New lead from Harmu Colony listing", time: "5 min ago" },
-                { text: "Agent Rajesh Kumar requested verification", time: "1 hour ago" },
-                { text: "3 properties pending approval", time: "2 hours ago" },
-              ].map((n, i) => (
-                <div key={i} className="px-4 py-3 text-xs" style={{ borderBottom: i < 2 ? "1px solid #E5E8EB" : "none" }}>
-                  <p style={{ color: "#15191C" }}>{n.text}</p>
-                  <p className="mt-1" style={{ color: "#495057" }}>{n.time}</p>
+              {notifLoading ? (
+                <p className="px-4 py-6 text-xs text-center" style={{ color: "#495057" }}>Loading...</p>
+              ) : notifications.length === 0 ? (
+                <p className="px-4 py-6 text-xs text-center" style={{ color: "#495057" }}>You're all caught up.</p>
+              ) : (
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.map((n, i) => (
+                    <button
+                      key={n.id}
+                      onClick={() => handleNotificationClick(n)}
+                      className="block w-full text-left px-4 py-3 text-xs transition-colors"
+                      style={{
+                        borderBottom: i < notifications.length - 1 ? "1px solid #E5E8EB" : "none",
+                        background: readIds.has(n.id) ? "transparent" : "#EAF4FB",
+                      }}
+                    >
+                      <p style={{ color: "#15191C" }}>{n.text}</p>
+                      <p className="mt-1" style={{ color: "#495057" }}>{formatRelativeTime(n.time)}</p>
+                    </button>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>
@@ -284,9 +346,14 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, adminProfile }) {
               className="absolute right-0 top-full mt-2 w-48 rounded-xl shadow-2xl z-50 overflow-hidden py-1"
               style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}
             >
-              {["My Profile", "Settings", "Help & Support"].map((label) => (
+              {[
+                { label: "My Profile", page: "profile" },
+                { label: "Settings", page: "settings" },
+                { label: "Help & Support", page: "help" },
+              ].map(({ label, page }) => (
                 <button
-                  key={label}
+                  key={page}
+                  onClick={() => goTo(page)}
                   className="block w-full text-left px-4 py-2.5 text-sm transition-colors"
                   style={{ color: "#15191C" }}
                   onMouseEnter={(e) => e.currentTarget.style.background = "#F2F4F6"}
@@ -330,7 +397,7 @@ export default function AdminLayout({ activePage, onNavigate, title, subtitle, c
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar title={title} subtitle={subtitle} onMenuClick={() => setMobileOpen(true)} onLogout={onLogout} adminProfile={adminProfile} />
+        <Topbar title={title} subtitle={subtitle} onMenuClick={() => setMobileOpen(true)} onLogout={onLogout} onNavigate={onNavigate} adminProfile={adminProfile} />
         <main className="flex-1 p-5 lg:p-8">{children}</main>
       </div>
     </div>

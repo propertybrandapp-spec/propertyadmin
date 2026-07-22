@@ -14,6 +14,25 @@ const KPI_CONFIG = [
 
 const TYPE_COLORS = { Apartment: "#2C9DD5", Villa: "#E87C02", Plot: "#BA0D0B", Commercial: "#4ade80" };
 
+// Turns the period-filter label into a start date to filter queries from.
+function getPeriodStart(period) {
+  const now = new Date();
+  switch (period) {
+    case "Today":
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    case "This Week": {
+      const day = now.getDay(); // 0 = Sunday
+      const daysSinceMonday = day === 0 ? 6 : day - 1;
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceMonday);
+    }
+    case "This Year":
+      return new Date(now.getFullYear(), 0, 1);
+    case "This Month":
+    default:
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+}
+
 // ── Bar Chart (lightweight, no deps) ──────────────────────────────────────────
 function MiniBarChart({ data, labels }) {
   const max = Math.max(...data, 1);
@@ -89,20 +108,24 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    fetchDashboardData(period);
+  }, [period]);
 
-  async function fetchDashboardData() {
+  async function fetchDashboardData(period) {
     setLoading(true);
+
+    const periodStart = getPeriodStart(period).toISOString();
 
     // Total listings count
     const { count: totalListings } = await safeQuery(
       supabase.from("listings").select("*", { count: "exact", head: true })
     );
 
-    // Active leads (everything not closed)
+    // Active leads (everything not closed) — scoped to the selected period
     const { count: activeLeads } = await safeQuery(
-      supabase.from("leads").select("*", { count: "exact", head: true }).not("stage", "in", '("Closed Won","Closed Lost")')
+      supabase.from("leads").select("*", { count: "exact", head: true })
+        .not("stage", "in", '("Closed Won","Closed Lost")')
+        .gte("created_at", periodStart)
     );
 
     // Pending approvals
@@ -121,10 +144,11 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
       supabase.from("listings").select("property_type, created_at")
     );
 
-    // Recent leads as a simple activity feed (extend with a dedicated
-    // activity_log table later if you want richer event tracking)
+    // Recent leads as a simple activity feed, scoped to the selected period
+    // (extend with a dedicated activity_log table later if you want richer
+    // event tracking)
     const { data: recentLeadsData } = await safeQuery(
-      supabase.from("leads").select("name, interest, created_at, stage").order("created_at", { ascending: false }).limit(6)
+      supabase.from("leads").select("name, interest, created_at, stage").gte("created_at", periodStart).order("created_at", { ascending: false }).limit(6)
     );
 
     setKpis({
@@ -194,7 +218,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
 
         {/* ── Period Filter ── */}
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <p className="text-sm" style={{ color: "#495057" }}>Welcome back, here's what's happening today.</p>
+          <p className="text-sm" style={{ color: "#495057" }}>Welcome back, here's what's happening {period.toLowerCase()}.</p>
           <div className="flex gap-2">
             {["Today", "This Week", "This Month", "This Year"].map((p) => (
               <button

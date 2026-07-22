@@ -9,6 +9,9 @@ import AdminBlogForm from "./AdminBlogForm";
 import AdminUsers from "./AdminUsers";
 import AdminLeads from "./AdminLeads";
 import AdminAgents from "./AdminAgents";
+import AdminProfile from "./AdminProfile";
+import AdminSettings from "./AdminSettings";
+import AdminHelpSupport from "./AdminHelpSupport";
 
 // ── Main Export ───────────────────────────────────────────────────────────────
 // This is the single entry point for the entire /admin area. It:
@@ -72,6 +75,12 @@ export default function AdminApp() {
     setAdminProfile(null);
   }
 
+  // Lets AdminProfile.jsx push a saved name change back into this shared
+  // state, so the sidebar/topbar reflect it immediately (no re-login needed).
+  function handleProfileUpdated(updatedProfile) {
+    setAdminProfile(updatedProfile);
+  }
+
   // ── Loading state ── (prevents login-page flash while checking session)
   if (loading) {
     return (
@@ -112,6 +121,12 @@ export default function AdminApp() {
       return <AdminBlogForm {...pageProps} editingListing={navPayload} />;
     case "users":
       return <AdminUsers {...pageProps} />;
+    case "profile":
+      return <AdminProfile {...pageProps} onProfileUpdated={handleProfileUpdated} />;
+    case "settings":
+      return <AdminSettings {...pageProps} />;
+    case "help":
+      return <AdminHelpSupport {...pageProps} />;
     default:
       return <AdminDashboard {...pageProps} />;
   }
