@@ -1,4 +1,5 @@
 import { supabase, safeQuery } from "./supabaseClient";
+import { normalizeListing } from "./listings";
 
 // ── Leads Data Layer ──────────────────────────────────────────────────────────
 // Note: leads.assigned_to references auth.users(id) directly (not
@@ -12,7 +13,7 @@ function daysAgo(isoDate) {
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
-export function normalizeLead(row, adminsById) {
+export function normalizeLead(row, adminsById, listingsById = {}) {
   return {
     id: row.id,
     dbId: row.id,
@@ -26,6 +27,11 @@ export function normalizeLead(row, adminsById) {
     assignedTo: row.assigned_to ? (adminsById[row.assigned_to]?.full_name || "Unassigned") : "Unassigned",
     assignedToId: row.assigned_to,
     listingId: row.listing_id,
+    // Full listing (title, location, price, specs, photos) so the admin can
+    // see exactly which property this lead is about — null if the lead
+    // isn't linked to one (e.g. a general "Contact Us" inquiry), or if that
+    // listing has since been deleted.
+    listing: row.listing_id ? (listingsById[row.listing_id] || null) : null,
     date: row.created_at ? new Date(row.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—",
     daysAgo: daysAgo(row.created_at),
     createdAt: row.created_at,
@@ -43,7 +49,19 @@ export async function fetchAdminLeads() {
   const adminsById = {};
   (admins || []).forEach((a) => { adminsById[a.id] = a; });
 
-  return { data: (leads || []).map((l) => normalizeLead(l, adminsById)), error: null };
+  // Batch-fetch every listing referenced by these leads in one query, so
+  // the leads table/drawer can show the linked property's photo, price,
+  // and specs without the admin having to go find it manually.
+  const listingIds = [...new Set((leads || []).map((l) => l.listing_id).filter(Boolean))];
+  let listingsById = {};
+  if (listingIds.length > 0) {
+    const { data: listingRows } = await safeQuery(
+      supabase.from("listings").select("*").in("id", listingIds)
+    );
+    (listingRows || []).forEach((row) => { listingsById[row.id] = normalizeListing(row); });
+  }
+
+  return { data: (leads || []).map((l) => normalizeLead(l, adminsById, listingsById)), error: null };
 }
 
 export async function updateLeadStage(id, stage) {
@@ -68,7 +86,13 @@ export async function deleteLead(id) {
 
 // Used by public forms (ContactUs.jsx, Footer's quick inquiry) — RLS allows
 // anyone, even logged-out visitors, to insert a lead.
-export async function submitLead({ name, phone, email, interest, budget, source = "Website" }) {
+//
+// listingId links this lead to a specific property (see PropertyDetail.jsx's
+// "Contact"/"Schedule a Site Visit" buttons) so the admin can see exactly
+// which listing it's about, with full specs/photos, from the Leads screen.
+// stage defaults to "New" but "Schedule a Site Visit" passes "Site Visit"
+// directly so it's immediately distinguishable in the pipeline.
+export async function submitLead({ name, phone, email, interest, budget, source = "Website", listingId, stage }) {
   const { error } = await safeQuery(
     supabase.from("leads").insert({
       name,
@@ -77,7 +101,8 @@ export async function submitLead({ name, phone, email, interest, budget, source 
       interest: interest || null,
       budget_label: budget || null,
       source,
-      stage: "New",
+      stage: stage || "New",
+      listing_id: listingId || null,
     })
   );
   return { error };

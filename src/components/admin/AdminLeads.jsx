@@ -20,7 +20,7 @@ function StageBadge({ stage }) {
 }
 
 // ── Lead Drawer ───────────────────────────────────────────────────────────────
-function LeadDrawer({ lead, onClose, onStageChange, onDelete }) {
+function LeadDrawer({ lead, onClose, onStageChange, onDelete, onNavigate }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
@@ -35,6 +35,35 @@ function LeadDrawer({ lead, onClose, onStageChange, onDelete }) {
           <p className="text-base font-bold" style={{ color: "#15191C" }}>{lead.name}</p>
           <StageBadge stage={lead.stage} />
         </div>
+
+        {/* ── Linked property — exactly which listing this lead is about,
+            with real specs/photo, not just a text blurb. ── */}
+        {lead.listingId && (
+          lead.listing ? (
+            <button
+              onClick={() => onNavigate("listings-form", lead.listing)}
+              className="w-full text-left flex items-center gap-3 mb-6 p-3 rounded-xl transition-colors"
+              style={{ background: "#EAF4FB", border: "1px solid #2C9DD5" }}
+            >
+              <img src={lead.listing.images?.[0]} alt={lead.listing.title} className="w-14 h-14 rounded-lg object-cover shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#2C9DD5" }}>Property</p>
+                <p className="text-sm font-bold truncate" style={{ color: "#15191C" }}>{lead.listing.title}</p>
+                <p className="text-xs truncate" style={{ color: "#495057" }}>
+                  {lead.listing.location} · {lead.listing.price}
+                  {lead.listing.bhk ? ` · ${lead.listing.bhk}` : ""}{lead.listing.area ? ` · ${lead.listing.area}` : ""}
+                </p>
+              </div>
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="#2C9DD5" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ) : (
+            <div className="mb-6 p-3 rounded-xl text-xs" style={{ background: "#F2F4F6", color: "#495057" }}>
+              This lead was linked to a listing that's since been removed.
+            </div>
+          )
+        )}
 
         <div className="space-y-3 text-sm mb-6">
           <div className="flex justify-between"><span style={{ color: "#495057" }}>Phone</span><span style={{ color: "#15191C" }}>{lead.phone}</span></div>
@@ -213,7 +242,10 @@ export default function AdminLeads({ onNavigate, onLogout, adminProfile }) {
                     >
                       <td className="px-5 py-3.5 font-semibold" style={{ color: "#15191C" }}>{lead.name}</td>
                       <td className="px-3 py-3.5 hidden sm:table-cell" style={{ color: "#495057" }}>{lead.phone}</td>
-                      <td className="px-3 py-3.5 hidden lg:table-cell truncate max-w-[220px]" style={{ color: "#495057" }}>{lead.interest || "—"}</td>
+                      <td className="px-3 py-3.5 hidden lg:table-cell truncate max-w-[220px]" style={{ color: "#495057" }}>
+                        {lead.listingId && <span title="Linked to a property listing">🏠 </span>}
+                        {lead.interest || "—"}
+                      </td>
                       <td className="px-3 py-3.5 hidden md:table-cell" style={{ color: "#495057" }}>{lead.source}</td>
                       <td className="px-3 py-3.5"><StageBadge stage={lead.stage} /></td>
                       <td className="px-3 py-3.5 hidden md:table-cell" style={{ color: "#495057" }}>{lead.date}</td>
@@ -233,7 +265,7 @@ export default function AdminLeads({ onNavigate, onLogout, adminProfile }) {
       </div>
 
       {viewingLead && (
-        <LeadDrawer lead={viewingLead} onClose={() => setViewingLead(null)} onStageChange={handleStageChange} onDelete={handleDelete} />
+        <LeadDrawer lead={viewingLead} onClose={() => setViewingLead(null)} onStageChange={handleStageChange} onDelete={handleDelete} onNavigate={onNavigate} />
       )}
     </AdminLayout>
   );
