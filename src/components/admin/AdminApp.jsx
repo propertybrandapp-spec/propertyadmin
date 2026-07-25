@@ -12,6 +12,7 @@ import AdminAgents from "./AdminAgents";
 import AdminProfile from "./AdminProfile";
 import AdminSettings from "./AdminSettings";
 import AdminHelpSupport from "./AdminHelpSupport";
+import AdminSiteContent from "./AdminSiteContent";
 
 // ── Main Export ───────────────────────────────────────────────────────────────
 // This is the single entry point for the entire /admin area. It:
@@ -121,6 +122,8 @@ export default function AdminApp() {
       return <AdminBlogForm {...pageProps} editingListing={navPayload} />;
     case "users":
       return <AdminUsers {...pageProps} />;
+    case "site-content":
+      return <AdminSiteContent {...pageProps} />;
     case "profile":
       return <AdminProfile {...pageProps} onProfileUpdated={handleProfileUpdated} />;
     case "settings":

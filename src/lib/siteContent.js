@@ -1,0 +1,280 @@
+import { supabase, safeQuery } from "./supabaseClient";
+
+// ── Site Content Data Layer (admin — full CRUD) ──────────────────────────────
+// Backs the "Site Content" admin page (four tabs: Partner Tiers, Client
+// Reviews, Subscription Plans, Investment Opportunities). Each of these used
+// to be a hardcoded constant in the corresponding public page's source file
+// — see supabase/migration_007_site_content.sql for the tables/RLS this
+// talks to.
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Partner Tiers
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function normalizePartnerTier(row) {
+  return {
+    id: row.id,
+    dbId: row.id,
+    name: row.name,
+    color: row.tier_color,
+    borderColor: row.border_color,
+    deals: row.deals_range,
+    commission: row.commission,
+    perks: Array.isArray(row.perks) ? row.perks : [],
+    cta: row.cta_label,
+    popular: row.is_popular,
+    active: row.is_active,
+    order: row.display_order,
+    createdAt: row.created_at,
+  };
+}
+
+export async function fetchAdminPartnerTiers() {
+  const { data, error } = await safeQuery(
+    supabase.from("partner_tiers").select("*").order("display_order", { ascending: true })
+  );
+  if (error) return { data: [], error };
+  return { data: (data || []).map(normalizePartnerTier), error: null };
+}
+
+function denormalizePartnerTier(t) {
+  return {
+    name: t.name,
+    tier_color: t.color || "#6B7280",
+    border_color: t.borderColor || "#E2E8F0",
+    deals_range: t.deals || null,
+    commission: t.commission || null,
+    perks: t.perks || [],
+    cta_label: t.cta || "Apply Now",
+    is_popular: !!t.popular,
+    is_active: t.active !== false,
+    display_order: t.order || 0,
+  };
+}
+
+export async function createPartnerTier(tier) {
+  const { data, error } = await safeQuery(
+    supabase.from("partner_tiers").insert(denormalizePartnerTier(tier)).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizePartnerTier(data), error: null };
+}
+
+export async function updatePartnerTier(id, tier) {
+  const { data, error } = await safeQuery(
+    supabase.from("partner_tiers").update(denormalizePartnerTier(tier)).eq("id", id).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizePartnerTier(data), error: null };
+}
+
+export async function deletePartnerTier(id) {
+  const { error } = await safeQuery(supabase.from("partner_tiers").delete().eq("id", id));
+  return { error };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Client Reviews
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function normalizeClientReview(row) {
+  return {
+    id: row.id,
+    dbId: row.id,
+    name: row.name,
+    role: row.role,
+    location: row.location,
+    avatar: row.avatar_initials,
+    avatarBg: row.avatar_gradient,
+    rating: row.rating,
+    category: row.category,
+    text: row.review_text,
+    property: row.property_label,
+    date: row.review_date,
+    verified: row.is_verified,
+    active: row.is_active,
+    order: row.display_order,
+    createdAt: row.created_at,
+  };
+}
+
+export async function fetchAdminClientReviews() {
+  const { data, error } = await safeQuery(
+    supabase.from("client_reviews").select("*").order("display_order", { ascending: true })
+  );
+  if (error) return { data: [], error };
+  return { data: (data || []).map(normalizeClientReview), error: null };
+}
+
+function denormalizeClientReview(r) {
+  return {
+    name: r.name,
+    role: r.role || null,
+    location: r.location || null,
+    avatar_initials: r.avatar || (r.name ? r.name.slice(0, 2).toUpperCase() : null),
+    avatar_gradient: r.avatarBg || "from-blue-500 to-blue-700",
+    rating: r.rating || 5,
+    category: r.category || null,
+    review_text: r.text,
+    property_label: r.property || null,
+    review_date: r.date || new Date().toISOString().slice(0, 10),
+    is_verified: r.verified !== false,
+    is_active: r.active !== false,
+    display_order: r.order || 0,
+  };
+}
+
+export async function createClientReview(review) {
+  const { data, error } = await safeQuery(
+    supabase.from("client_reviews").insert(denormalizeClientReview(review)).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeClientReview(data), error: null };
+}
+
+export async function updateClientReview(id, review) {
+  const { data, error } = await safeQuery(
+    supabase.from("client_reviews").update(denormalizeClientReview(review)).eq("id", id).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeClientReview(data), error: null };
+}
+
+export async function deleteClientReview(id) {
+  const { error } = await safeQuery(supabase.from("client_reviews").delete().eq("id", id));
+  return { error };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Subscription Plans
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function normalizeSubscriptionPlan(row) {
+  return {
+    id: row.id,
+    dbId: row.id,
+    name: row.name,
+    price: row.price_label,
+    period: row.billing_period,
+    idealFor: row.ideal_for,
+    color: row.plan_color,
+    borderColor: row.border_color,
+    features: Array.isArray(row.features) ? row.features : [],
+    popular: row.is_popular,
+    active: row.is_active,
+    order: row.display_order,
+    createdAt: row.created_at,
+  };
+}
+
+export async function fetchAdminSubscriptionPlans() {
+  const { data, error } = await safeQuery(
+    supabase.from("subscription_plans").select("*").order("display_order", { ascending: true })
+  );
+  if (error) return { data: [], error };
+  return { data: (data || []).map(normalizeSubscriptionPlan), error: null };
+}
+
+function denormalizeSubscriptionPlan(p) {
+  return {
+    name: p.name,
+    price_label: p.price,
+    billing_period: p.period || "/month",
+    ideal_for: p.idealFor || null,
+    plan_color: p.color || "#6B7280",
+    border_color: p.borderColor || "#E2E8F0",
+    features: p.features || [],
+    is_popular: !!p.popular,
+    is_active: p.active !== false,
+    display_order: p.order || 0,
+  };
+}
+
+export async function createSubscriptionPlan(plan) {
+  const { data, error } = await safeQuery(
+    supabase.from("subscription_plans").insert(denormalizeSubscriptionPlan(plan)).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeSubscriptionPlan(data), error: null };
+}
+
+export async function updateSubscriptionPlan(id, plan) {
+  const { data, error } = await safeQuery(
+    supabase.from("subscription_plans").update(denormalizeSubscriptionPlan(plan)).eq("id", id).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeSubscriptionPlan(data), error: null };
+}
+
+export async function deleteSubscriptionPlan(id) {
+  const { error } = await safeQuery(supabase.from("subscription_plans").delete().eq("id", id));
+  return { error };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Investment Opportunities
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function normalizeInvestmentOpportunity(row) {
+  return {
+    id: row.id,
+    dbId: row.id,
+    city: row.city,
+    area: row.area,
+    tag: row.tag,
+    tagColor: row.tag_color,
+    appreciation: row.appreciation,
+    rentalYield: row.rental_yield,
+    priceRange: row.price_range,
+    type: row.property_type,
+    image: row.image_url,
+    active: row.is_active,
+    order: row.display_order,
+    createdAt: row.created_at,
+  };
+}
+
+export async function fetchAdminInvestmentOpportunities() {
+  const { data, error } = await safeQuery(
+    supabase.from("investment_opportunities").select("*").order("display_order", { ascending: true })
+  );
+  if (error) return { data: [], error };
+  return { data: (data || []).map(normalizeInvestmentOpportunity), error: null };
+}
+
+function denormalizeInvestmentOpportunity(o) {
+  return {
+    city: o.city || "Bhubaneswar",
+    area: o.area,
+    tag: o.tag || null,
+    tag_color: o.tagColor || "bg-blue-100 text-[#1E88E5]",
+    appreciation: o.appreciation || null,
+    rental_yield: o.rentalYield || null,
+    price_range: o.priceRange || null,
+    property_type: o.type || null,
+    image_url: o.image || null,
+    is_active: o.active !== false,
+    display_order: o.order || 0,
+  };
+}
+
+export async function createInvestmentOpportunity(opp) {
+  const { data, error } = await safeQuery(
+    supabase.from("investment_opportunities").insert(denormalizeInvestmentOpportunity(opp)).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeInvestmentOpportunity(data), error: null };
+}
+
+export async function updateInvestmentOpportunity(id, opp) {
+  const { data, error } = await safeQuery(
+    supabase.from("investment_opportunities").update(denormalizeInvestmentOpportunity(opp)).eq("id", id).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeInvestmentOpportunity(data), error: null };
+}
+
+export async function deleteInvestmentOpportunity(id) {
+  const { error } = await safeQuery(supabase.from("investment_opportunities").delete().eq("id", id));
+  return { error };
+}

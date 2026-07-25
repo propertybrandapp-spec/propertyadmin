@@ -54,6 +54,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    id: "site-content",
+    label: "Site Content",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5zM8 7h8M8 11h8M8 15h5" />
+      </svg>
+    ),
+  },
+  {
     id: "users",
     label: "Users & Roles",
     icon: (
@@ -82,12 +91,15 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-5 shrink-0" style={{ borderBottom: "1px solid #E2E8F0" }}>
           {!collapsed && (
-            <span className="font-extrabold text-lg tracking-tight" style={{ color: "#1F2937" }}>
-              property<span style={{ color: "#1E88E5" }}>Brands</span>
+            <span className="flex items-center gap-2">
+              <img src="/logo-icon.webp" alt="PropertyBrands" className="w-8 h-8 rounded-full object-cover" />
+              <span className="font-extrabold text-lg tracking-tight" style={{ color: "#1F2937" }}>
+                property<span style={{ color: "#1E88E5" }}>Brands</span>
+              </span>
             </span>
           )}
           {collapsed && (
-            <span className="font-extrabold text-lg mx-auto" style={{ color: "#1E88E5" }}>pB</span>
+            <img src="/logo-icon.webp" alt="PropertyBrands" className="w-8 h-8 rounded-full object-cover mx-auto" />
           )}
           <button
             onClick={() => setMobileOpen(false)}

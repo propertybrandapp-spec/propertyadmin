@@ -55,9 +55,7 @@ export default function AdminLogin({ onLoginSuccess }) {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <span className="font-extrabold text-2xl tracking-tight" style={{ color: "#1F2937" }}>
-            property<span style={{ color: "#1E88E5" }}>Brands</span>
-          </span>
+          <img src="/logo.webp" alt="PropertyBrands" className="h-16 mx-auto object-contain" />
           <p className="text-sm mt-2" style={{ color: "#6B7280" }}>Admin Console</p>
         </div>
 
