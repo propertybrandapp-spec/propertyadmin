@@ -77,22 +77,22 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
         className={`fixed lg:sticky top-0 left-0 h-screen z-50 flex flex-col transition-all duration-300 shrink-0
           ${collapsed ? "w-20" : "w-64"}
           ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
-        style={{ background: "#FFFFFF", borderRight: "1px solid #E5E8EB" }}
+        style={{ background: "#FFFFFF", borderRight: "1px solid #E2E8F0" }}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-5 shrink-0" style={{ borderBottom: "1px solid #E5E8EB" }}>
+        <div className="flex items-center justify-between h-16 px-5 shrink-0" style={{ borderBottom: "1px solid #E2E8F0" }}>
           {!collapsed && (
-            <span className="font-extrabold text-lg tracking-tight" style={{ color: "#15191C" }}>
-              property<span style={{ color: "#2C9DD5" }}>Brands</span>
+            <span className="font-extrabold text-lg tracking-tight" style={{ color: "#1F2937" }}>
+              property<span style={{ color: "#1E88E5" }}>Brands</span>
             </span>
           )}
           {collapsed && (
-            <span className="font-extrabold text-lg mx-auto" style={{ color: "#2C9DD5" }}>pB</span>
+            <span className="font-extrabold text-lg mx-auto" style={{ color: "#1E88E5" }}>pB</span>
           )}
           <button
             onClick={() => setMobileOpen(false)}
             className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg"
-            style={{ color: "#495057" }}
+            style={{ color: "#6B7280" }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -105,7 +105,7 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
           <div className="px-5 pt-4 pb-2">
             <span
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full"
-              style={{ background: "#EAF4FB", color: "#2C9DD5", border: "1px solid #2C9DD5" }}
+              style={{ background: "#EFF6FF", color: "#1E88E5", border: "1px solid #1E88E5" }}
             >
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 1L3 5v6c0 5 3.5 7.5 7 9 3.5-1.5 7-4 7-9V5l-7-4zm0 2.2l5 2.86v4.94c0 3.7-2.5 5.7-5 6.9-2.5-1.2-5-3.2-5-6.9V6.06l5-2.86z" />
@@ -125,10 +125,10 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
                 onClick={() => { onNavigate(item.id); setMobileOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${collapsed ? "justify-center" : ""}`}
                 style={{
-                  background: active ? "#2C9DD5" : "transparent",
-                  color: active ? "#FFFFFF" : "#495057",
+                  background: active ? "#1E88E5" : "transparent",
+                  color: active ? "#FFFFFF" : "#6B7280",
                 }}
-                onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#F2F4F6"; }}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#F1F5F9"; }}
                 onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
                 title={collapsed ? item.label : undefined}
               >
@@ -140,12 +140,12 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
         </nav>
 
         {/* Return to main site */}
-        <div className="p-3" style={{ borderTop: "1px solid #E5E8EB" }}>
+        <div className="p-3" style={{ borderTop: "1px solid #E2E8F0" }}>
           <a
             href={MAIN_SITE_URL}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${collapsed ? "justify-center" : ""}`}
-            style={{ color: "#495057" }}
-            onMouseEnter={(e) => e.currentTarget.style.background = "#F2F4F6"}
+            style={{ color: "#6B7280" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "#F1F5F9"}
             onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
             title={collapsed ? "Return to Main Site" : undefined}
           >
@@ -157,11 +157,11 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
         </div>
 
         {/* Collapse toggle (desktop only) */}
-        <div className="hidden lg:block p-3 pt-0" style={{ borderTop: "1px solid #E5E8EB" }}>
+        <div className="hidden lg:block p-3 pt-0" style={{ borderTop: "1px solid #E2E8F0" }}>
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-colors"
-            style={{ color: "#495057", background: "#F2F4F6" }}
+            style={{ color: "#6B7280", background: "#F1F5F9" }}
           >
             <svg
               className={`w-4 h-4 transition-transform ${collapsed ? "rotate-180" : ""}`}
@@ -230,21 +230,21 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
   return (
     <header
       className="sticky top-0 z-30 flex items-center justify-between gap-4 h-16 px-5 lg:px-8 shrink-0"
-      style={{ background: "#FFFFFF", borderBottom: "1px solid #E5E8EB" }}
+      style={{ background: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}
     >
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onMenuClick}
           className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg shrink-0"
-          style={{ color: "#15191C", background: "#F2F4F6" }}
+          style={{ color: "#1F2937", background: "#F1F5F9" }}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
         <div className="min-w-0">
-          <h1 className="text-base lg:text-lg font-bold truncate" style={{ color: "#15191C" }}>{title}</h1>
-          {subtitle && <p className="text-xs truncate" style={{ color: "#495057" }}>{subtitle}</p>}
+          <h1 className="text-base lg:text-lg font-bold truncate" style={{ color: "#1F2937" }}>{title}</h1>
+          {subtitle && <p className="text-xs truncate" style={{ color: "#6B7280" }}>{subtitle}</p>}
         </div>
       </div>
 
@@ -252,16 +252,16 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
         {/* Search (desktop) */}
         <div
           className="hidden md:flex items-center gap-2 rounded-xl px-3 py-2 w-56"
-          style={{ background: "#F2F4F6", border: "1px solid #E5E8EB" }}
+          style={{ background: "#F1F5F9", border: "1px solid #E2E8F0" }}
         >
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "#495057" }}>
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "#6B7280" }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
           </svg>
           <input
             type="text"
             placeholder="Search..."
             className="flex-1 text-sm bg-transparent focus:outline-none"
-            style={{ color: "#15191C" }}
+            style={{ color: "#1F2937" }}
           />
         </div>
 
@@ -270,15 +270,15 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
           <button
             onClick={openNotifications}
             className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
-            style={{ background: "#F2F4F6" }}
+            style={{ background: "#F1F5F9" }}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: "#15191C" }}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: "#1F2937" }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
             {unreadCount > 0 && (
               <span
                 className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
-                style={{ background: "#BA0D0B", color: "#FFFFFF" }}
+                style={{ background: "#1E88E5", color: "#FFFFFF" }}
               >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
@@ -287,20 +287,20 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
           {notifOpen && (
             <div
               className="absolute right-0 top-full mt-2 w-72 rounded-xl shadow-2xl z-50 overflow-hidden"
-              style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}
+              style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
             >
-              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #E5E8EB" }}>
-                <p className="text-sm font-bold" style={{ color: "#15191C" }}>Notifications</p>
+              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #E2E8F0" }}>
+                <p className="text-sm font-bold" style={{ color: "#1F2937" }}>Notifications</p>
                 {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-xs font-semibold" style={{ color: "#2C9DD5" }}>
+                  <button onClick={markAllRead} className="text-xs font-semibold" style={{ color: "#1E88E5" }}>
                     Mark all read
                   </button>
                 )}
               </div>
               {notifLoading ? (
-                <p className="px-4 py-6 text-xs text-center" style={{ color: "#495057" }}>Loading...</p>
+                <p className="px-4 py-6 text-xs text-center" style={{ color: "#6B7280" }}>Loading...</p>
               ) : notifications.length === 0 ? (
-                <p className="px-4 py-6 text-xs text-center" style={{ color: "#495057" }}>You're all caught up.</p>
+                <p className="px-4 py-6 text-xs text-center" style={{ color: "#6B7280" }}>You're all caught up.</p>
               ) : (
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.map((n, i) => (
@@ -309,12 +309,12 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
                       onClick={() => handleNotificationClick(n)}
                       className="block w-full text-left px-4 py-3 text-xs transition-colors"
                       style={{
-                        borderBottom: i < notifications.length - 1 ? "1px solid #E5E8EB" : "none",
-                        background: readIds.has(n.id) ? "transparent" : "#EAF4FB",
+                        borderBottom: i < notifications.length - 1 ? "1px solid #E2E8F0" : "none",
+                        background: readIds.has(n.id) ? "transparent" : "#EFF6FF",
                       }}
                     >
-                      <p style={{ color: "#15191C" }}>{n.text}</p>
-                      <p className="mt-1" style={{ color: "#495057" }}>{formatRelativeTime(n.time)}</p>
+                      <p style={{ color: "#1F2937" }}>{n.text}</p>
+                      <p className="mt-1" style={{ color: "#6B7280" }}>{formatRelativeTime(n.time)}</p>
                     </button>
                   ))}
                 </div>
@@ -328,23 +328,23 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
           <button
             onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
             className="flex items-center gap-2 pl-1 pr-2 lg:pr-3 py-1 rounded-xl transition-colors"
-            style={{ background: "#F2F4F6" }}
+            style={{ background: "#F1F5F9" }}
           >
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              style={{ background: "#2C9DD5", color: "#FFFFFF" }}
+              style={{ background: "#1E88E5", color: "#FFFFFF" }}
             >
               {initials}
             </div>
-            <span className="hidden lg:block text-sm font-semibold" style={{ color: "#15191C" }}>{displayName}</span>
-            <svg className="hidden lg:block w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" style={{ color: "#495057" }}>
+            <span className="hidden lg:block text-sm font-semibold" style={{ color: "#1F2937" }}>{displayName}</span>
+            <svg className="hidden lg:block w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" style={{ color: "#6B7280" }}>
               <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
           {profileOpen && (
             <div
               className="absolute right-0 top-full mt-2 w-48 rounded-xl shadow-2xl z-50 overflow-hidden py-1"
-              style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}
+              style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
             >
               {[
                 { label: "My Profile", page: "profile" },
@@ -355,19 +355,19 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
                   key={page}
                   onClick={() => goTo(page)}
                   className="block w-full text-left px-4 py-2.5 text-sm transition-colors"
-                  style={{ color: "#15191C" }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#F2F4F6"}
+                  style={{ color: "#1F2937" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#F1F5F9"}
                   onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                 >
                   {label}
                 </button>
               ))}
-              <div style={{ borderTop: "1px solid #E5E8EB" }} />
+              <div style={{ borderTop: "1px solid #E2E8F0" }} />
               <button
                 onClick={() => { setProfileOpen(false); onLogout && onLogout(); }}
                 className="block w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors"
-                style={{ color: "#BA0D0B" }}
-                onMouseEnter={(e) => e.currentTarget.style.background = "#FCEAEA"}
+                style={{ color: "#DC2626" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "#FEE2E2"}
                 onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
               >
                 Log Out
@@ -386,7 +386,7 @@ export default function AdminLayout({ activePage, onNavigate, title, subtitle, c
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen" style={{ background: "#F7F8FA" }}>
+    <div className="flex min-h-screen" style={{ background: "#F8FAFC" }}>
       <Sidebar
         activePage={activePage}
         onNavigate={onNavigate}

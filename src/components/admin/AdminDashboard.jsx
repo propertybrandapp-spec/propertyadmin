@@ -6,13 +6,13 @@ import AdminLayout from "./AdminLayout";
 
 // Static visual config (icon/color) — paired with live counts fetched below.
 const KPI_CONFIG = [
-  { key: "totalListings", label: "Total Listings", icon: "🏠", color: "#2C9DD5", bg: "#EAF4FB" },
-  { key: "activeLeads", label: "Active Leads", icon: "📞", color: "#E87C02", bg: "#FDF1E5" },
-  { key: "revenue", label: "Revenue (MTD)", icon: "💰", color: "#4ade80", bg: "#EAF8EC" },
-  { key: "pendingApprovals", label: "Pending Approvals", icon: "⏳", color: "#BA0D0B", bg: "#FCEAEA" },
+  { key: "totalListings", label: "Total Listings", icon: "🏠", color: "#1E88E5", bg: "#EFF6FF" },
+  { key: "activeLeads", label: "Active Leads", icon: "📞", color: "#F59E0B", bg: "#FEF3C7" },
+  { key: "revenue", label: "Revenue (MTD)", icon: "💰", color: "#4ade80", bg: "#F0FDF4" },
+  { key: "pendingApprovals", label: "Pending Approvals", icon: "⏳", color: "#DC2626", bg: "#FEE2E2" },
 ];
 
-const TYPE_COLORS = { Apartment: "#2C9DD5", Villa: "#E87C02", Plot: "#BA0D0B", Commercial: "#4ade80" };
+const TYPE_COLORS = { Apartment: "#1E88E5", Villa: "#F59E0B", Plot: "#1E88E5", Commercial: "#4ade80" };
 
 // Turns the period-filter label into a start date to filter queries from.
 function getPeriodStart(period) {
@@ -45,11 +45,11 @@ function MiniBarChart({ data, labels }) {
               className="w-full rounded-t-md transition-all duration-300 group-hover:opacity-80"
               style={{
                 height: `${(val / max) * 100}%`,
-                background: i === data.length - 1 ? "#2C9DD5" : "#EAF4FB",
+                background: i === data.length - 1 ? "#1E88E5" : "#EFF6FF",
               }}
             />
           </div>
-          <span className="text-[10px]" style={{ color: "#495057" }}>{labels[i]}</span>
+          <span className="text-[10px]" style={{ color: "#6B7280" }}>{labels[i]}</span>
         </div>
       ))}
     </div>
@@ -63,7 +63,7 @@ function MiniDonut({ segments, total }) {
     <div className="flex items-center gap-6">
       <div className="relative w-32 h-32 shrink-0">
         <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F2F4F6" strokeWidth="3.5" />
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F1F5F9" strokeWidth="3.5" />
           {segments.map((seg) => {
             const offset = cumulative;
             cumulative += seg.value;
@@ -80,16 +80,16 @@ function MiniDonut({ segments, total }) {
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-xl font-extrabold" style={{ color: "#15191C" }}>{total}</p>
-          <p className="text-[10px]" style={{ color: "#495057" }}>Total</p>
+          <p className="text-xl font-extrabold" style={{ color: "#1F2937" }}>{total}</p>
+          <p className="text-[10px]" style={{ color: "#6B7280" }}>Total</p>
         </div>
       </div>
       <div className="space-y-2 flex-1">
         {segments.map((seg) => (
           <div key={seg.label} className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: seg.color }} />
-            <span className="text-xs flex-1" style={{ color: "#15191C" }}>{seg.label}</span>
-            <span className="text-xs font-bold" style={{ color: "#495057" }}>{seg.value}%</span>
+            <span className="text-xs flex-1" style={{ color: "#1F2937" }}>{seg.label}</span>
+            <span className="text-xs font-bold" style={{ color: "#6B7280" }}>{seg.value}%</span>
           </div>
         ))}
       </div>
@@ -172,7 +172,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
       (recentLeadsData || []).map((l) => ({
         text: `New lead — ${l.name}${l.interest ? `, ${l.interest}` : ""}`,
         time: new Date(l.created_at).toLocaleString(),
-        color: l.stage === "New" ? "#2C9DD5" : "#4ade80",
+        color: l.stage === "New" ? "#1E88E5" : "#4ade80",
       }))
     );
 
@@ -185,7 +185,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
       Object.entries(typeCounts).map(([label, count]) => ({
         label,
         value: Math.round((count / totalForPct) * 100),
-        color: TYPE_COLORS[label] || "#495057",
+        color: TYPE_COLORS[label] || "#6B7280",
       }))
     );
 
@@ -218,7 +218,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
 
         {/* ── Period Filter ── */}
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <p className="text-sm" style={{ color: "#495057" }}>Welcome back, here's what's happening {period.toLowerCase()}.</p>
+          <p className="text-sm" style={{ color: "#6B7280" }}>Welcome back, here's what's happening {period.toLowerCase()}.</p>
           <div className="flex gap-2">
             {["Today", "This Week", "This Month", "This Year"].map((p) => (
               <button
@@ -226,9 +226,9 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
                 onClick={() => setPeriod(p)}
                 className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
-                  background: period === p ? "#2C9DD5" : "#FFFFFF",
-                  color: period === p ? "#FFFFFF" : "#495057",
-                  border: `1px solid ${period === p ? "#2C9DD5" : "#E5E8EB"}`,
+                  background: period === p ? "#1E88E5" : "#FFFFFF",
+                  color: period === p ? "#FFFFFF" : "#6B7280",
+                  border: `1px solid ${period === p ? "#1E88E5" : "#E2E8F0"}`,
                 }}
               >
                 {p}
@@ -243,7 +243,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
             <div
               key={kpi.label}
               className="rounded-2xl p-5 transition-shadow hover:shadow-lg"
-              style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}
+              style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
             >
               <div className="flex items-center justify-between mb-3">
                 <div
@@ -253,13 +253,13 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
                   {kpi.icon}
                 </div>
                 {loading ? (
-                  <span className="text-xs px-2 py-1 rounded-full" style={{ background: "#F2F4F6", color: "#495057" }}>...</span>
+                  <span className="text-xs px-2 py-1 rounded-full" style={{ background: "#F1F5F9", color: "#6B7280" }}>...</span>
                 ) : null}
               </div>
-              <p className="text-2xl font-extrabold" style={{ color: "#15191C" }}>
+              <p className="text-2xl font-extrabold" style={{ color: "#1F2937" }}>
                 {loading ? "—" : (kpi.key === "revenue" ? kpis[kpi.key] : kpis[kpi.key]?.toLocaleString())}
               </p>
-              <p className="text-sm mt-1" style={{ color: "#495057" }}>{kpi.label}</p>
+              <p className="text-sm mt-1" style={{ color: "#6B7280" }}>{kpi.label}</p>
             </div>
           ))}
         </div>
@@ -269,14 +269,14 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
           {/* Bar chart */}
           <div
             className="lg:col-span-2 rounded-2xl p-6"
-            style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}
+            style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
           >
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-base font-bold" style={{ color: "#15191C" }}>Listings Growth</h3>
-                <p className="text-xs mt-0.5" style={{ color: "#495057" }}>Monthly new listings added</p>
+                <h3 className="text-base font-bold" style={{ color: "#1F2937" }}>Listings Growth</h3>
+                <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>Monthly new listings added</p>
               </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#EAF4FB", color: "#2C9DD5" }}>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
                 +{monthlyGrowth.thisMonth} this month
               </span>
             </div>
@@ -286,12 +286,12 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
           {/* Donut */}
           <div
             className="rounded-2xl p-6"
-            style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}
+            style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
           >
-            <h3 className="text-base font-bold mb-1" style={{ color: "#15191C" }}>Listings by Type</h3>
-            <p className="text-xs mb-5" style={{ color: "#495057" }}>Distribution across categories</p>
+            <h3 className="text-base font-bold mb-1" style={{ color: "#1F2937" }}>Listings by Type</h3>
+            <p className="text-xs mb-5" style={{ color: "#6B7280" }}>Distribution across categories</p>
             {typeSegments.length === 0 ? (
-              <p className="text-sm py-8 text-center" style={{ color: "#495057" }}>No listings yet</p>
+              <p className="text-sm py-8 text-center" style={{ color: "#6B7280" }}>No listings yet</p>
             ) : (
               <MiniDonut segments={typeSegments} total={kpis.totalListings} />
             )}
@@ -301,25 +301,25 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
         {/* ── Activity + Top Listings ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Recent Activity */}
-          <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid #E5E8EB" }}>
-              <h3 className="text-base font-bold" style={{ color: "#15191C" }}>Recent Activity</h3>
-              <button onClick={() => onNavigate("leads")} className="text-xs font-semibold" style={{ color: "#2C9DD5" }}>View all</button>
+          <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid #E2E8F0" }}>
+              <h3 className="text-base font-bold" style={{ color: "#1F2937" }}>Recent Activity</h3>
+              <button onClick={() => onNavigate("leads")} className="text-xs font-semibold" style={{ color: "#1E88E5" }}>View all</button>
             </div>
             {recentActivity.length === 0 ? (
-              <p className="text-sm py-10 text-center" style={{ color: "#495057" }}>{loading ? "Loading..." : "No recent activity yet"}</p>
+              <p className="text-sm py-10 text-center" style={{ color: "#6B7280" }}>{loading ? "Loading..." : "No recent activity yet"}</p>
             ) : (
               <div>
                 {recentActivity.map((item, i) => (
                   <div
                     key={i}
                     className="flex items-start gap-3 px-6 py-3.5"
-                    style={{ borderBottom: i < recentActivity.length - 1 ? "1px solid #F2F4F6" : "none" }}
+                    style={{ borderBottom: i < recentActivity.length - 1 ? "1px solid #F1F5F9" : "none" }}
                   >
                     <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: item.color }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm" style={{ color: "#15191C" }}>{item.text}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "#495057" }}>{item.time}</p>
+                      <p className="text-sm" style={{ color: "#1F2937" }}>{item.text}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{item.time}</p>
                     </div>
                   </div>
                 ))}
@@ -328,40 +328,40 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
           </div>
 
           {/* Top Listings */}
-          <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid #E5E8EB" }}>
-              <h3 className="text-base font-bold" style={{ color: "#15191C" }}>Top Performing Listings</h3>
+          <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid #E2E8F0" }}>
+              <h3 className="text-base font-bold" style={{ color: "#1F2937" }}>Top Performing Listings</h3>
               <button
                 onClick={() => onNavigate("listings")}
                 className="text-xs font-semibold"
-                style={{ color: "#2C9DD5" }}
+                style={{ color: "#1E88E5" }}
               >
                 View all
               </button>
             </div>
             {topListings.length === 0 ? (
-              <p className="text-sm py-10 text-center" style={{ color: "#495057" }}>{loading ? "Loading..." : "No live listings yet"}</p>
+              <p className="text-sm py-10 text-center" style={{ color: "#6B7280" }}>{loading ? "Loading..." : "No live listings yet"}</p>
             ) : (
               <div>
                 {topListings.map((item, i) => (
                   <div
                     key={i}
                     className="flex items-center gap-4 px-6 py-3.5"
-                    style={{ borderBottom: i < topListings.length - 1 ? "1px solid #F2F4F6" : "none" }}
+                    style={{ borderBottom: i < topListings.length - 1 ? "1px solid #F1F5F9" : "none" }}
                   >
                     <span
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ background: "#F2F4F6", color: "#495057" }}
+                      style={{ background: "#F1F5F9", color: "#6B7280" }}
                     >
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "#15191C" }}>{item.title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "#495057" }}>{item.location} · {item.price}</p>
+                      <p className="text-sm font-semibold truncate" style={{ color: "#1F2937" }}>{item.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{item.location} · {item.price}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs font-bold" style={{ color: "#2C9DD5" }}>{item.views} views</p>
-                      <p className="text-xs mt-0.5" style={{ color: "#495057" }}>{item.leads} leads</p>
+                      <p className="text-xs font-bold" style={{ color: "#1E88E5" }}>{item.views} views</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{item.leads} leads</p>
                     </div>
                   </div>
                 ))}

@@ -21,15 +21,15 @@ const EMPTY_FORM = {
 function Field({ label, children, required }) {
   return (
     <div>
-      <label className="block text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: "#495057" }}>
-        {label}{required && <span style={{ color: "#BA0D0B" }}> *</span>}
+      <label className="block text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: "#6B7280" }}>
+        {label}{required && <span style={{ color: "#DC2626" }}> *</span>}
       </label>
       {children}
     </div>
   );
 }
 
-const inputStyle = { background: "#FFFFFF", border: "1px solid #E5E8EB", color: "#15191C" };
+const inputStyle = { background: "#FFFFFF", border: "1px solid #E2E8F0", color: "#1F2937" };
 
 function TextInput(props) {
   return <input {...props} className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2" style={inputStyle} />;
@@ -122,12 +122,12 @@ export default function AdminBlogForm({ onNavigate, onLogout, adminProfile, edit
       <form onSubmit={handleSave} className="max-w-3xl space-y-6">
 
         {saveError && (
-          <div className="px-4 py-3 rounded-xl text-sm font-semibold" style={{ background: "#FCEAEA", color: "#BA0D0B" }}>{saveError}</div>
+          <div className="px-4 py-3 rounded-xl text-sm font-semibold" style={{ background: "#FEE2E2", color: "#DC2626" }}>{saveError}</div>
         )}
 
-        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           <Field label="Title" required>
-            <TextInput value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. 5 Things to Check Before Buying in Ranchi" required />
+            <TextInput value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. 5 Things to Check Before Buying in Bhubaneswar" required />
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -168,19 +168,19 @@ export default function AdminBlogForm({ onNavigate, onLogout, adminProfile, edit
         </div>
 
         {/* ── Cover Image ── */}
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#15191C" }}>Cover Image</h2>
-          {uploadError && <div className="px-3.5 py-2.5 rounded-xl text-xs font-semibold" style={{ background: "#FCEAEA", color: "#BA0D0B" }}>{uploadError}</div>}
+        <div className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Cover Image</h2>
+          {uploadError && <div className="px-3.5 py-2.5 rounded-xl text-xs font-semibold" style={{ background: "#FEE2E2", color: "#DC2626" }}>{uploadError}</div>}
           <div className="flex items-center gap-4">
             {form.image && (
-              <div className="relative w-32 h-20 rounded-xl overflow-hidden" style={{ border: "1px solid #E5E8EB" }}>
+              <div className="relative w-32 h-20 rounded-xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
                 <img src={form.image} alt="" className="w-full h-full object-cover" />
                 <button type="button" onClick={() => set("image", "")}
                   className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
                   style={{ background: "rgba(0,0,0,0.7)", color: "#FFFFFF" }}>×</button>
               </div>
             )}
-            <label className="px-4 py-2.5 rounded-xl text-sm font-bold cursor-pointer" style={{ background: "#F2F4F6", color: "#495057" }}>
+            <label className="px-4 py-2.5 rounded-xl text-sm font-bold cursor-pointer" style={{ background: "#F1F5F9", color: "#6B7280" }}>
               {uploading ? "Uploading..." : form.image ? "Replace Image" : "Upload Image"}
               <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={handleCoverUpload} className="hidden" disabled={uploading} />
             </label>
@@ -188,11 +188,11 @@ export default function AdminBlogForm({ onNavigate, onLogout, adminProfile, edit
         </div>
 
         {/* ── Tags ── */}
-        <div className="rounded-2xl p-6 space-y-3" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#15191C" }}>Tags</h2>
+        <div className="rounded-2xl p-6 space-y-3" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Tags</h2>
           <div className="flex flex-wrap gap-2">
             {form.tags.map((t) => (
-              <span key={t} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "#EAF4FB", color: "#2C9DD5" }}>
+              <span key={t} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
                 {t}
                 <button type="button" onClick={() => removeTag(t)} className="font-bold">×</button>
               </span>
@@ -202,7 +202,7 @@ export default function AdminBlogForm({ onNavigate, onLogout, adminProfile, edit
             <input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
               placeholder="Type a tag and press Enter" className="flex-1 text-sm px-3.5 py-2.5 rounded-xl focus:outline-none" style={inputStyle} />
-            <button type="button" onClick={addTag} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: "#F2F4F6", color: "#495057" }}>Add</button>
+            <button type="button" onClick={addTag} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: "#F1F5F9", color: "#6B7280" }}>Add</button>
           </div>
         </div>
 
@@ -210,10 +210,10 @@ export default function AdminBlogForm({ onNavigate, onLogout, adminProfile, edit
         <div className="flex items-center justify-between flex-wrap gap-3 pb-8">
           <div className="flex gap-3">
             <button type="submit" disabled={saving || uploading}
-              className="px-6 py-3 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#BA0D0B", color: "#FFFFFF" }}>
+              className="px-6 py-3 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#1E88E5", color: "#FFFFFF" }}>
               {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Article"}
             </button>
-            <button type="button" onClick={() => onNavigate("blog")} className="px-6 py-3 rounded-xl text-sm font-bold" style={{ background: "#F2F4F6", color: "#495057" }}>
+            <button type="button" onClick={() => onNavigate("blog")} className="px-6 py-3 rounded-xl text-sm font-bold" style={{ background: "#F1F5F9", color: "#6B7280" }}>
               Cancel
             </button>
           </div>
@@ -221,14 +221,14 @@ export default function AdminBlogForm({ onNavigate, onLogout, adminProfile, edit
           {isEditing && (
             confirmDelete ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold" style={{ color: "#BA0D0B" }}>Delete this article permanently?</span>
-                <button type="button" onClick={handleDelete} disabled={deleting} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#BA0D0B", color: "#FFFFFF" }}>
+                <span className="text-xs font-semibold" style={{ color: "#DC2626" }}>Delete this article permanently?</span>
+                <button type="button" onClick={handleDelete} disabled={deleting} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#DC2626", color: "#FFFFFF" }}>
                   {deleting ? "Deleting..." : "Yes, Delete"}
                 </button>
-                <button type="button" onClick={() => setConfirmDelete(false)} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#F2F4F6", color: "#495057" }}>Cancel</button>
+                <button type="button" onClick={() => setConfirmDelete(false)} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#F1F5F9", color: "#6B7280" }}>Cancel</button>
               </div>
             ) : (
-              <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm font-bold hover:underline" style={{ color: "#BA0D0B" }}>Delete Article</button>
+              <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm font-bold hover:underline" style={{ color: "#DC2626" }}>Delete Article</button>
             )
           )}
         </div>

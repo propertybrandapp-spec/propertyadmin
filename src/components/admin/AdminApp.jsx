@@ -84,13 +84,13 @@ export default function AdminApp() {
   // ── Loading state ── (prevents login-page flash while checking session)
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F7F8FA" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFC" }}>
         <div className="flex items-center gap-3">
-          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#2C9DD5" }}>
+          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1E88E5" }}>
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
             <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
           </svg>
-          <span className="text-sm" style={{ color: "#495057" }}>Loading admin console...</span>
+          <span className="text-sm" style={{ color: "#6B7280" }}>Loading admin console...</span>
         </div>
       </div>
     );

@@ -13,10 +13,10 @@ const MODERATION_OPTIONS = ["Live", "Pending", "Flagged", "Rejected"];
 const TAGS_LIST = ["Luxury", "Affordable", "Gated Community", "Office", "Retail", "Industrial", "Co-living", "Student Accommodation"];
 const AMENITIES_PRESET = ["Lift", "Parking", "Power Backup", "Security", "Swimming Pool", "Gym", "Garden", "Club House", "CCTV", "24x7 Security", "Cafeteria", "WiFi", "Housekeeping"];
 const BADGE_COLOR_PRESETS = [
-  { label: "Blue", value: "#2C9DD5" },
-  { label: "Red", value: "#BA0D0B" },
-  { label: "Orange", value: "#E87C02" },
-  { label: "Green", value: "#16a34a" },
+  { label: "Blue", value: "#1E88E5" },
+  { label: "Red", value: "#1E88E5" },
+  { label: "Orange", value: "#F59E0B" },
+  { label: "Green", value: "#16A34A" },
   { label: "Purple", value: "#a78bfa" },
 ];
 
@@ -41,15 +41,15 @@ const EMPTY_FORM = {
   featured: false,
   verified: false,
   badge: "",
-  badgeColor: "#2C9DD5",
+  badgeColor: "#1E88E5",
 };
 
 // ── Small building blocks ──────────────────────────────────────────────────────
 function Field({ label, children, required }) {
   return (
     <div>
-      <label className="block text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: "#495057" }}>
-        {label}{required && <span style={{ color: "#BA0D0B" }}> *</span>}
+      <label className="block text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: "#6B7280" }}>
+        {label}{required && <span style={{ color: "#DC2626" }}> *</span>}
       </label>
       {children}
     </div>
@@ -58,8 +58,8 @@ function Field({ label, children, required }) {
 
 const inputStyle = {
   background: "#FFFFFF",
-  border: "1px solid #E5E8EB",
-  color: "#15191C",
+  border: "1px solid #E2E8F0",
+  color: "#1F2937",
 };
 
 function TextInput(props) {
@@ -76,9 +76,9 @@ function Chip({ label, active, onClick }) {
     <button type="button" onClick={onClick}
       className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
       style={{
-        background: active ? "#2C9DD5" : "#FFFFFF",
-        color: active ? "#FFFFFF" : "#495057",
-        border: `1px solid ${active ? "#2C9DD5" : "#E5E8EB"}`,
+        background: active ? "#1E88E5" : "#FFFFFF",
+        color: active ? "#FFFFFF" : "#6B7280",
+        border: `1px solid ${active ? "#1E88E5" : "#E2E8F0"}`,
       }}
     >
       {label}
@@ -197,21 +197,21 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       <form onSubmit={handleSave} className="max-w-4xl space-y-6">
 
         {saveError && (
-          <div className="px-4 py-3 rounded-xl text-sm font-semibold" style={{ background: "#FCEAEA", color: "#BA0D0B" }}>
+          <div className="px-4 py-3 rounded-xl text-sm font-semibold" style={{ background: "#FEE2E2", color: "#DC2626" }}>
             {saveError}
           </div>
         )}
 
         {/* ── Basic Info ── */}
-        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#15191C" }}>Basic Information</h2>
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Basic Information</h2>
 
           <Field label="Title" required>
             <TextInput value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. 3 BHK Apartment" required />
           </Field>
 
           <Field label="Location" required>
-            <TextInput value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Harmu Housing Colony, Ranchi" required />
+            <TextInput value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Patia, Bhubaneswar" required />
           </Field>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -258,8 +258,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           </div>
 
           {form.priceRaw && (
-            <p className="text-xs" style={{ color: "#495057" }}>
-              Will display as <span className="font-bold" style={{ color: "#2C9DD5" }}>{priceLabelFromRaw(form.priceRaw)}</span>
+            <p className="text-xs" style={{ color: "#6B7280" }}>
+              Will display as <span className="font-bold" style={{ color: "#1E88E5" }}>{priceLabelFromRaw(form.priceRaw)}</span>
             </p>
           )}
 
@@ -292,19 +292,19 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
         </div>
 
         {/* ── Photos ── */}
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#15191C" }}>Photos</h2>
-          <p className="text-xs" style={{ color: "#495057" }}>
+        <div className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Photos</h2>
+          <p className="text-xs" style={{ color: "#6B7280" }}>
             Uploaded directly to Cloudflare R2. The first photo becomes the cover image shown on cards.
           </p>
 
           {uploadError && (
-            <div className="px-3.5 py-2.5 rounded-xl text-xs font-semibold" style={{ background: "#FCEAEA", color: "#BA0D0B" }}>{uploadError}</div>
+            <div className="px-3.5 py-2.5 rounded-xl text-xs font-semibold" style={{ background: "#FEE2E2", color: "#DC2626" }}>{uploadError}</div>
           )}
 
           <div className="flex flex-wrap gap-3">
             {form.images.map((url) => (
-              <div key={url} className="relative w-28 h-28 rounded-xl overflow-hidden group" style={{ border: "1px solid #E5E8EB" }}>
+              <div key={url} className="relative w-28 h-28 rounded-xl overflow-hidden group" style={{ border: "1px solid #E2E8F0" }}>
                 <img src={url} alt="" className="w-full h-full object-cover" />
                 <button
                   type="button"
@@ -319,10 +319,10 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
             <label
               className="w-28 h-28 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
-              style={{ border: "1.5px dashed #E5E8EB", color: "#495057" }}
+              style={{ border: "1.5px dashed #E2E8F0", color: "#6B7280" }}
             >
               {uploading ? (
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#2C9DD5" }}>
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1E88E5" }}>
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
                   <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 </svg>
@@ -340,8 +340,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
         </div>
 
         {/* ── Category & Amenities ── */}
-        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#15191C" }}>Category &amp; Amenities</h2>
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Category &amp; Amenities</h2>
 
           <Field label="Category Tags (used by Buy/Rent nav filters)">
             <div className="flex flex-wrap gap-2">
@@ -361,16 +361,16 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
         </div>
 
         {/* ── Display Options ── */}
-        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#15191C" }}>Display Options</h2>
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Display Options</h2>
 
           <div className="flex flex-wrap gap-6">
-            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#15191C" }}>
-              <input type="checkbox" checked={form.featured} onChange={(e) => set("featured", e.target.checked)} className="w-4 h-4 rounded accent-[#2C9DD5]" />
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+              <input type="checkbox" checked={form.featured} onChange={(e) => set("featured", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
               Featured listing
             </label>
-            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#15191C" }}>
-              <input type="checkbox" checked={form.verified} onChange={(e) => set("verified", e.target.checked)} className="w-4 h-4 rounded accent-[#2C9DD5]" />
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+              <input type="checkbox" checked={form.verified} onChange={(e) => set("verified", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
               Verified badge
             </label>
           </div>
@@ -388,7 +388,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                     onClick={() => set("badgeColor", c.value)}
                     title={c.label}
                     className="w-7 h-7 rounded-full shrink-0 transition-transform"
-                    style={{ background: c.value, border: form.badgeColor === c.value ? "2.5px solid #15191C" : "2px solid transparent" }}
+                    style={{ background: c.value, border: form.badgeColor === c.value ? "2.5px solid #1F2937" : "2px solid transparent" }}
                   />
                 ))}
               </div>
@@ -401,12 +401,12 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           <div className="flex gap-3">
             <button type="submit" disabled={saving || uploading}
               className="px-6 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
-              style={{ background: "#BA0D0B", color: "#FFFFFF" }}>
+              style={{ background: "#1E88E5", color: "#FFFFFF" }}>
               {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Listing"}
             </button>
             <button type="button" onClick={() => onNavigate("listings")}
               className="px-6 py-3 rounded-xl text-sm font-bold transition-all"
-              style={{ background: "#F2F4F6", color: "#495057" }}>
+              style={{ background: "#F1F5F9", color: "#6B7280" }}>
               Cancel
             </button>
           </div>
@@ -414,19 +414,19 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           {isEditing && (
             confirmDelete ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold" style={{ color: "#BA0D0B" }}>Delete this listing permanently?</span>
+                <span className="text-xs font-semibold" style={{ color: "#DC2626" }}>Delete this listing permanently?</span>
                 <button type="button" onClick={handleDelete} disabled={deleting}
-                  className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#BA0D0B", color: "#FFFFFF" }}>
+                  className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#1E88E5", color: "#FFFFFF" }}>
                   {deleting ? "Deleting..." : "Yes, Delete"}
                 </button>
                 <button type="button" onClick={() => setConfirmDelete(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#F2F4F6", color: "#495057" }}>
+                  className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "#F1F5F9", color: "#6B7280" }}>
                   Cancel
                 </button>
               </div>
             ) : (
               <button type="button" onClick={() => setConfirmDelete(true)}
-                className="text-sm font-bold hover:underline" style={{ color: "#BA0D0B" }}>
+                className="text-sm font-bold hover:underline" style={{ color: "#1E88E5" }}>
                 Delete Listing
               </button>
             )

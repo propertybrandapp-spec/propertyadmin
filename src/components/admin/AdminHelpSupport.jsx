@@ -33,24 +33,24 @@ export default function AdminHelpSupport({ onNavigate, onLogout, adminProfile })
       subtitle="Common questions and how to get help"
     >
       <div className="max-w-lg space-y-5">
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           {FAQS.map((item, i) => (
-            <div key={i} className="px-6 py-4" style={{ borderBottom: i < FAQS.length - 1 ? "1px solid #F2F4F6" : "none" }}>
-              <p className="text-sm font-bold mb-1" style={{ color: "#15191C" }}>{item.q}</p>
-              <p className="text-xs" style={{ color: "#495057" }}>{item.a}</p>
+            <div key={i} className="px-6 py-4" style={{ borderBottom: i < FAQS.length - 1 ? "1px solid #F1F5F9" : "none" }}>
+              <p className="text-sm font-bold mb-1" style={{ color: "#1F2937" }}>{item.q}</p>
+              <p className="text-xs" style={{ color: "#6B7280" }}>{item.a}</p>
             </div>
           ))}
         </div>
 
-        <div className="rounded-2xl p-6" style={{ background: "#EAF4FB", border: "1px solid #2C9DD5" }}>
-          <h2 className="text-sm font-bold mb-2" style={{ color: "#15191C" }}>Still stuck?</h2>
-          <p className="text-xs mb-3" style={{ color: "#495057" }}>
+        <div className="rounded-2xl p-6" style={{ background: "#EFF6FF", border: "1px solid #1E88E5" }}>
+          <h2 className="text-sm font-bold mb-2" style={{ color: "#1F2937" }}>Still stuck?</h2>
+          <p className="text-xs mb-3" style={{ color: "#6B7280" }}>
             Reach out and include what you were trying to do and any error message you saw.
           </p>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="inline-block text-sm font-bold px-4 py-2.5 rounded-xl"
-            style={{ background: "#2C9DD5", color: "#FFFFFF" }}
+            style={{ background: "#1E88E5", color: "#FFFFFF" }}
           >
             Email {SUPPORT_EMAIL}
           </a>

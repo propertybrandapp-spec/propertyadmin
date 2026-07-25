@@ -2,25 +2,25 @@
 
 /* ── CSS Custom Properties ──────────────────────────────────────────────────── */
 :root {
-  --primary-blue: #2C9DD5;
-  --accent-orange: #E87C02;
-  --brand-red: #BA0D0B;
-  --deep-maroon: #5C0B03;
+  --primary-blue: #1E88E5;
+  --accent-orange: #F59E0B;
+  --brand-red: #DC2626;
+  --deep-maroon: #B91C1C;
 
   --bg-dark: #FFFFFF;
   --surface: #FFFFFF;
-  --text-light: #15191C;
-  --text-muted: #5B6670;
+  --text-light: #1F2937;
+  --text-muted: #6B7280;
 
-  --silver: #1F242A;
+  --silver: #1F2937;
 
   /* Derived */
-  --border-subtle: #E5E8EB;
-  --border-mid: #D6DADD;
-  --surface-raised: #F2F4F6;
-  --blue-tint: #EAF4FB;
-  --red-tint: #FCEAEA;
-  --orange-tint: #FDF1E5;
+  --border-subtle: #E2E8F0;
+  --border-mid: #E2E8F0;
+  --surface-raised: #F1F5F9;
+  --blue-tint: #EFF6FF;
+  --red-tint: #FEE2E2;
+  --orange-tint: #FEF3C7;
 }
 
 /* ── Reset & Base (scoped to @layer base so Tailwind utilities always win) ──── */
@@ -138,7 +138,7 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 input[type='range']::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 4px rgba(44, 157, 213, 0.25);
+  box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.25);
 }
 
 input[type='range']::-moz-range-thumb {
@@ -158,7 +158,7 @@ input[type='range']::-moz-range-thumb {
 
 /* ── Selection ──────────────────────────────────────────────────────────────── */
 ::selection {
-  background-color: rgba(44, 157, 213, 0.25);
+  background-color: rgba(30, 136, 229, 0.25);
   color: var(--text-light);
 }
 
@@ -186,15 +186,15 @@ input[type='range']::-moz-range-thumb {
 
 /* Glow effects */
 .glow-blue {
-  box-shadow: 0 0 24px rgba(44, 157, 213, 0.15);
+  box-shadow: 0 0 24px rgba(30, 136, 229, 0.15);
 }
 
 .glow-red {
-  box-shadow: 0 0 24px rgba(186, 13, 11, 0.2);
+  box-shadow: 0 0 24px rgba(220, 38, 38, 0.2);
 }
 
 .glow-orange {
-  box-shadow: 0 0 24px rgba(232, 124, 2, 0.15);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.15);
 }
 
 /* ── Button Base Styles ─────────────────────────────────────────────────────── */
@@ -233,13 +233,13 @@ input[type='range']::-moz-range-thumb {
 }
 
 .btn-ghost {
-  background: rgba(44, 157, 213, 0.1);
+  background: rgba(30, 136, 229, 0.1);
   color: var(--primary-blue);
-  border: 1px solid rgba(44, 157, 213, 0.2);
+  border: 1px solid rgba(30, 136, 229, 0.2);
 }
 
 .btn-ghost:hover {
-  background: rgba(44, 157, 213, 0.2);
+  background: rgba(30, 136, 229, 0.2);
 }
 
 /* ── Card Base ──────────────────────────────────────────────────────────────── */
@@ -260,7 +260,7 @@ input[type='range']::-moz-range-thumb {
   background: var(--surface);
   border: 1px solid var(--primary-blue);
   border-radius: 16px;
-  box-shadow: 0 0 32px rgba(44, 157, 213, 0.1);
+  box-shadow: 0 0 32px rgba(30, 136, 229, 0.1);
 }
 
 /* ── Badge Variants ─────────────────────────────────────────────────────────── */
@@ -275,21 +275,21 @@ input[type='range']::-moz-range-thumb {
 }
 
 .badge-blue {
-  background: rgba(44, 157, 213, 0.12);
+  background: rgba(30, 136, 229, 0.12);
   color: var(--primary-blue);
-  border: 1px solid rgba(44, 157, 213, 0.25);
+  border: 1px solid rgba(30, 136, 229, 0.25);
 }
 
 .badge-red {
-  background: rgba(186, 13, 11, 0.12);
+  background: rgba(220, 38, 38, 0.12);
   color: var(--brand-red);
-  border: 1px solid rgba(186, 13, 11, 0.25);
+  border: 1px solid rgba(220, 38, 38, 0.25);
 }
 
 .badge-orange {
-  background: rgba(232, 124, 2, 0.12);
+  background: rgba(245, 158, 11, 0.12);
   color: var(--accent-orange);
-  border: 1px solid rgba(232, 124, 2, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
 .badge-green {
@@ -355,11 +355,11 @@ input[type='range']::-moz-range-thumb {
 
 /* ── Radial Glow Backgrounds ────────────────────────────────────────────────── */
 .radial-blue {
-  background: radial-gradient(ellipse at 50% 0%, rgba(44, 157, 213, 0.12) 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(30, 136, 229, 0.12) 0%, transparent 70%);
 }
 
 .radial-red {
-  background: radial-gradient(ellipse at 50% 100%, rgba(186, 13, 11, 0.1) 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 100%, rgba(220, 38, 38, 0.1) 0%, transparent 70%);
 }
 
 /* ── Animation Utilities ────────────────────────────────────────────────────── */
@@ -498,23 +498,23 @@ option {
    via !important + attribute selectors (which was the bug). */
 @layer components {
   .shadow-sm {
-    box-shadow: 0 1px 2px rgba(21, 25, 28, 0.04), 0 1px 1px rgba(21, 25, 28, 0.03);
+    box-shadow: 0 1px 2px rgba(31, 41, 55, 0.04), 0 1px 1px rgba(31, 41, 55, 0.03);
   }
 
   .shadow-md {
-    box-shadow: 0 4px 12px rgba(21, 25, 28, 0.06), 0 1px 3px rgba(21, 25, 28, 0.04);
+    box-shadow: 0 4px 12px rgba(31, 41, 55, 0.06), 0 1px 3px rgba(31, 41, 55, 0.04);
   }
 
   .shadow-lg {
-    box-shadow: 0 12px 28px rgba(21, 25, 28, 0.09), 0 2px 6px rgba(21, 25, 28, 0.05);
+    box-shadow: 0 12px 28px rgba(31, 41, 55, 0.09), 0 2px 6px rgba(31, 41, 55, 0.05);
   }
 
   .shadow-xl {
-    box-shadow: 0 20px 40px rgba(21, 25, 28, 0.10), 0 4px 10px rgba(21, 25, 28, 0.05);
+    box-shadow: 0 20px 40px rgba(31, 41, 55, 0.10), 0 4px 10px rgba(31, 41, 55, 0.05);
   }
 
   .shadow-2xl {
-    box-shadow: 0 28px 56px rgba(21, 25, 28, 0.14), 0 6px 14px rgba(21, 25, 28, 0.06);
+    box-shadow: 0 28px 56px rgba(31, 41, 55, 0.14), 0 6px 14px rgba(31, 41, 55, 0.06);
   }
 }
 
@@ -530,7 +530,7 @@ button:active {
 /* Refined focus ring — premium products use a soft glow, not a hard outline */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(44, 157, 213, 0.25);
+  box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.25);
   border-radius: 6px;
 }
 
@@ -569,4 +569,4 @@ button:active {
 
 /* Note: --text-muted CSS variable kept as-is below; the actual color darkening
    for inline-styled components is applied via direct hex replacement across
-   the component files (see #5B6670 → #495057). */
+   the component files (see #6B7280 → #6B7280). */

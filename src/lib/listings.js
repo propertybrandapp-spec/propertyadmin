@@ -44,7 +44,7 @@ export function normalizeListing(row) {
     age: row.age || null,
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     badge: row.badge || null,
-    badgeColor: row.badge_color || "#2C9DD5",
+    badgeColor: row.badge_color || "#1E88E5",
     description: row.description || "",
     views: row.views || 0,
     createdAt: row.created_at,

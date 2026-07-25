@@ -3,10 +3,10 @@ import { supabase, safeQuery } from "./supabaseClient";
 // ── Blog Posts Data Layer ─────────────────────────────────────────────────────
 
 const CATEGORY_COLORS = {
-  "Buying Guide": "bg-[#16a34a]",
+  "Buying Guide": "bg-[#16A34A]",
   "Investment Insights": "bg-purple-600",
   "Project Reviews": "bg-[#a78bfa]",
-  "Home & Lifestyle": "bg-[#E87C02]",
+  "Home & Lifestyle": "bg-[#F59E0B]",
   "Market Reports": "bg-blue-600",
 };
 

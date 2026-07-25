@@ -45,29 +45,29 @@ export default function AdminProfile({ onNavigate, onLogout, adminProfile, onPro
     >
       <div className="max-w-lg space-y-5">
         {/* Identity card */}
-        <div className="rounded-2xl p-6 flex items-center gap-4" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
+        <div className="rounded-2xl p-6 flex items-center gap-4" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           <div
             className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-            style={{ background: "#2C9DD5", color: "#FFFFFF" }}
+            style={{ background: "#1E88E5", color: "#FFFFFF" }}
           >
             {adminProfile?.avatar_initials || adminProfile?.full_name?.charAt(0) || "A"}
           </div>
           <div className="min-w-0">
-            <p className="text-base font-bold truncate" style={{ color: "#15191C" }}>{adminProfile?.full_name}</p>
-            <p className="text-xs" style={{ color: "#495057" }}>{ROLE_LABELS[adminProfile?.role] || adminProfile?.role}</p>
+            <p className="text-base font-bold truncate" style={{ color: "#1F2937" }}>{adminProfile?.full_name}</p>
+            <p className="text-xs" style={{ color: "#6B7280" }}>{ROLE_LABELS[adminProfile?.role] || adminProfile?.role}</p>
           </div>
         </div>
 
         {/* Editable details */}
-        <form onSubmit={handleSave} className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E5E8EB" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#15191C" }}>Account details</h2>
+        <form onSubmit={handleSave} className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Account details</h2>
 
           {message && (
             <div
               className="px-3 py-2 rounded-lg text-xs font-semibold"
               style={{
-                background: message.type === "success" ? "#EAF8EC" : "#FCEAEA",
-                color: message.type === "success" ? "#1c7c3f" : "#BA0D0B",
+                background: message.type === "success" ? "#F0FDF4" : "#FEE2E2",
+                color: message.type === "success" ? "#15803D" : "#1E88E5",
               }}
             >
               {message.text}
@@ -75,41 +75,41 @@ export default function AdminProfile({ onNavigate, onLogout, adminProfile, onPro
           )}
 
           <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: "#495057" }}>Full name</label>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: "#6B7280" }}>Full name</label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="w-full text-sm px-3 py-2.5 rounded-lg focus:outline-none"
-              style={{ border: "1px solid #E5E8EB", color: "#15191C" }}
+              style={{ border: "1px solid #E2E8F0", color: "#1F2937" }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: "#495057" }}>Email</label>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: "#6B7280" }}>Email</label>
             <input
               type="text"
               value={email}
               disabled
               className="w-full text-sm px-3 py-2.5 rounded-lg"
-              style={{ border: "1px solid #E5E8EB", color: "#495057", background: "#F7F8FA" }}
+              style={{ border: "1px solid #E2E8F0", color: "#6B7280", background: "#F8FAFC" }}
             />
-            <p className="text-[11px] mt-1" style={{ color: "#495057" }}>Contact a Super Admin to change your login email.</p>
+            <p className="text-[11px] mt-1" style={{ color: "#6B7280" }}>Contact a Super Admin to change your login email.</p>
           </div>
 
           <button
             type="submit"
             disabled={saving}
             className="text-sm font-bold px-4 py-2.5 rounded-xl"
-            style={{ background: "#2C9DD5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}
+            style={{ background: "#1E88E5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}
           >
             {saving ? "Saving..." : "Save changes"}
           </button>
         </form>
 
-        <p className="text-xs" style={{ color: "#495057" }}>
+        <p className="text-xs" style={{ color: "#6B7280" }}>
           Need to change your password? Go to{" "}
-          <button onClick={() => onNavigate("settings")} className="font-semibold" style={{ color: "#2C9DD5" }}>
+          <button onClick={() => onNavigate("settings")} className="font-semibold" style={{ color: "#1E88E5" }}>
             Settings
           </button>.
         </p>
