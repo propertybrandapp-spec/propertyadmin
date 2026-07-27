@@ -278,3 +278,107 @@ export async function deleteInvestmentOpportunity(id) {
   const { error } = await safeQuery(supabase.from("investment_opportunities").delete().eq("id", id));
   return { error };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Site Settings (singleton — contact info + social links)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function normalizeSiteSettings(row) {
+  if (!row) return null;
+  return {
+    dbId: row.id,
+    phone: row.phone || "",
+    whatsapp: row.whatsapp || "",
+    email: row.email || "",
+    website: row.website_url || "",
+    address: row.corporate_address || "",
+    businessHours: row.business_hours || "",
+    facebook: row.facebook_url || "",
+    instagram: row.instagram_url || "",
+    linkedin: row.linkedin_url || "",
+    youtube: row.youtube_url || "",
+  };
+}
+
+export async function fetchAdminSiteSettings() {
+  const { data, error } = await safeQuery(supabase.from("site_settings").select("*").limit(1));
+  if (error) return { data: null, error };
+  return { data: normalizeSiteSettings(data && data[0]), error: null };
+}
+
+export async function updateSiteSettings(id, settings) {
+  const payload = {
+    phone: settings.phone || null,
+    whatsapp: settings.whatsapp || null,
+    email: settings.email || null,
+    website_url: settings.website || null,
+    corporate_address: settings.address || null,
+    business_hours: settings.businessHours || null,
+    facebook_url: settings.facebook || null,
+    instagram_url: settings.instagram || null,
+    linkedin_url: settings.linkedin || null,
+    youtube_url: settings.youtube || null,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await safeQuery(
+    supabase.from("site_settings").update(payload).eq("id", id).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeSiteSettings(data), error: null };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Office Locations
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function normalizeOfficeLocation(row) {
+  return {
+    id: row.id,
+    dbId: row.id,
+    city: row.city,
+    address: row.address,
+    phone: row.phone,
+    active: row.is_active,
+    order: row.display_order,
+    createdAt: row.created_at,
+  };
+}
+
+export async function fetchAdminOfficeLocations() {
+  const { data, error } = await safeQuery(
+    supabase.from("office_locations").select("*").order("display_order", { ascending: true })
+  );
+  if (error) return { data: [], error };
+  return { data: (data || []).map(normalizeOfficeLocation), error: null };
+}
+
+function denormalizeOfficeLocation(o) {
+  return {
+    city: o.city,
+    address: o.address,
+    phone: o.phone || null,
+    is_active: o.active !== false,
+    display_order: o.order || 0,
+  };
+}
+
+export async function createOfficeLocation(office) {
+  const { data, error } = await safeQuery(
+    supabase.from("office_locations").insert(denormalizeOfficeLocation(office)).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeOfficeLocation(data), error: null };
+}
+
+export async function updateOfficeLocation(id, office) {
+  const { data, error } = await safeQuery(
+    supabase.from("office_locations").update(denormalizeOfficeLocation(office)).eq("id", id).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeOfficeLocation(data), error: null };
+}
+
+export async function deleteOfficeLocation(id) {
+  const { error } = await safeQuery(supabase.from("office_locations").delete().eq("id", id));
+  return { error };
+}

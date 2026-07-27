@@ -5,14 +5,18 @@ import {
   fetchAdminClientReviews, createClientReview, updateClientReview, deleteClientReview,
   fetchAdminSubscriptionPlans, createSubscriptionPlan, updateSubscriptionPlan, deleteSubscriptionPlan,
   fetchAdminInvestmentOpportunities, createInvestmentOpportunity, updateInvestmentOpportunity, deleteInvestmentOpportunity,
+  fetchAdminSiteSettings, updateSiteSettings,
+  fetchAdminOfficeLocations, createOfficeLocation, updateOfficeLocation, deleteOfficeLocation,
 } from "../../lib/siteContent";
 import { uploadToR2, validateImageFile } from "../../lib/r2Upload";
 
 const TABS = [
+  { id: "settings", label: "Contact & Social" },
   { id: "tiers", label: "Partner Tiers" },
   { id: "reviews", label: "Client Reviews" },
   { id: "plans", label: "Subscription Plans" },
   { id: "investments", label: "Investment Opportunities" },
+  { id: "offices", label: "Office Locations" },
 ];
 
 // ── Shared small building blocks ─────────────────────────────────────────────
@@ -544,6 +548,153 @@ function InvestmentsPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Contact & Social Settings (singleton — no add/delete, just one edit form)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function SettingsPanel() {
+  const [settings, setSettings] = useState(null); // null = loading
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  function load() {
+    fetchAdminSiteSettings().then(({ data }) => { setSettings(data); setForm(data); });
+  }
+  useEffect(load, []);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true); setMessage(null);
+    const { data, error } = await updateSiteSettings(settings.dbId, form);
+    setSaving(false);
+    if (error) { setMessage({ type: "error", text: "Couldn't save." }); return; }
+    setSettings(data); setForm(data);
+    setMessage({ type: "success", text: "Saved." });
+  }
+
+  if (settings === null) return <EmptyState label="Loading..." />;
+  if (!settings) {
+    return <EmptyState label="Site settings haven't been set up yet — run migration_009_site_settings.sql in Supabase, then reload this page." />;
+  }
+
+  return (
+    <Card>
+      <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+        <p className="text-xs" style={{ color: "#6B7280" }}>
+          Shown in the Footer and Contact Us page across the public site — including the social icons in the footer, which will keep pointing nowhere useful until you add real URLs here.
+        </p>
+        {message && (
+          <div className="px-3 py-2 rounded-lg text-xs font-semibold" style={{ background: message.type === "success" ? "#F0FDF4" : "#FEE2E2", color: message.type === "success" ? "#15803D" : "#DC2626" }}>
+            {message.text}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Phone"><TextInput value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 94301 00000" /></Field>
+          <Field label="WhatsApp"><TextInput value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="+91 98765 00000" /></Field>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Email"><TextInput value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="info@propertybrands.in" /></Field>
+          <Field label="Website"><TextInput value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="www.propertybrands.in" /></Field>
+        </div>
+        <Field label="Corporate address"><TextArea rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
+        <Field label="Business hours"><TextInput value={form.businessHours} onChange={(e) => setForm({ ...form, businessHours: e.target.value })} placeholder="Mon – Sat, 9:00 AM – 7:00 PM" /></Field>
+        <p className="text-xs font-bold pt-2" style={{ color: "#1F2937" }}>Social media (leave blank to hide the icon)</p>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Facebook URL"><TextInput value={form.facebook} onChange={(e) => setForm({ ...form, facebook: e.target.value })} placeholder="https://facebook.com/yourpage" /></Field>
+          <Field label="Instagram URL"><TextInput value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} placeholder="https://instagram.com/yourpage" /></Field>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="LinkedIn URL"><TextInput value={form.linkedin} onChange={(e) => setForm({ ...form, linkedin: e.target.value })} placeholder="https://linkedin.com/company/yourpage" /></Field>
+          <Field label="YouTube URL"><TextInput value={form.youtube} onChange={(e) => setForm({ ...form, youtube: e.target.value })} placeholder="https://youtube.com/@yourchannel" /></Field>
+        </div>
+        <div className="pt-2">
+          <button type="submit" disabled={saving} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Office Locations
+// ═══════════════════════════════════════════════════════════════════════════
+
+const EMPTY_OFFICE = { city: "", address: "", phone: "", active: true, order: 0 };
+
+function OfficeForm({ initial, onCancel, onSaved }) {
+  const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.city || !form.address) return;
+    setSaving(true); setError("");
+    const fn = form.dbId ? updateOfficeLocation(form.dbId, form) : createOfficeLocation(form);
+    const { data, error } = await fn;
+    setSaving(false);
+    if (error) { setError("Couldn't save."); return; }
+    onSaved(data);
+  }
+
+  return (
+    <Card>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="City"><TextInput value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required /></Field>
+          <Field label="Phone"><TextInput value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+        </div>
+        <Field label="Address"><TextInput value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} required /></Field>
+        <Field label="Display order"><TextInput type="number" value={form.order} onChange={(e) => setForm({ ...form, order: parseInt(e.target.value) || 0 })} className="max-w-[140px]" /></Field>
+        <SaveBar onCancel={onCancel} saving={saving} error={error} />
+      </form>
+    </Card>
+  );
+}
+
+function OfficesPanel() {
+  const [items, setItems] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
+
+  function load() { fetchAdminOfficeLocations().then(({ data }) => setItems(data)); }
+  useEffect(load, []);
+
+  async function toggleActive(o) { await updateOfficeLocation(o.dbId, { ...o, active: !o.active }); load(); }
+  async function handleDelete(id) { await deleteOfficeLocation(id); setConfirmId(null); load(); }
+
+  if (items === null) return <EmptyState label="Loading..." />;
+
+  return (
+    <div className="space-y-4">
+      {editing ? (
+        <OfficeForm initial={editing.dbId ? editing : EMPTY_OFFICE} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
+      ) : (
+        <button onClick={() => setEditing(EMPTY_OFFICE)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF" }}>+ Add Office</button>
+      )}
+      {items.length === 0 && !editing && <EmptyState label="No office locations yet — add one above." />}
+      {items.map((o) => (
+        <Card key={o.id}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm font-bold" style={{ color: "#1F2937" }}>{o.city}</p>
+                <ActivePill active={o.active} />
+              </div>
+              <p className="text-xs" style={{ color: "#6B7280" }}>{o.address}{o.phone ? ` · ${o.phone}` : ""}</p>
+            </div>
+            <RowActions active={o.active} onEdit={() => setEditing(o)} onToggle={() => toggleActive(o)}
+              onDelete={() => handleDelete(o.dbId)} confirming={confirmId === o.id} setConfirming={(v) => setConfirmId(v ? o.id : null)} />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Export
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -575,10 +726,12 @@ export default function AdminSiteContent({ onNavigate, onLogout, adminProfile })
         ))}
       </div>
 
+      {activeTab === "settings" && <SettingsPanel />}
       {activeTab === "tiers" && <TiersPanel />}
       {activeTab === "reviews" && <ReviewsPanel />}
       {activeTab === "plans" && <PlansPanel />}
       {activeTab === "investments" && <InvestmentsPanel />}
+      {activeTab === "offices" && <OfficesPanel />}
     </AdminLayout>
   );
 }

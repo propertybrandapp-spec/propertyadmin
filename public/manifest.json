@@ -1,0 +1,13 @@
+{
+  "name": "PropertyBrands Admin Console",
+  "short_name": "PB Admin",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#1E88E5",
+  "icons": [
+    { "src": "/favicon-32.webp", "sizes": "32x32", "type": "image/webp" },
+    { "src": "/favicon-180.webp", "sizes": "180x180", "type": "image/webp" },
+    { "src": "/favicon-512.webp", "sizes": "512x512", "type": "image/webp", "purpose": "any maskable" }
+  ]
+}
