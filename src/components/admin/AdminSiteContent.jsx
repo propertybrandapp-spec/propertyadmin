@@ -8,10 +8,14 @@ import {
   fetchAdminSiteSettings, updateSiteSettings,
   fetchAdminOfficeLocations, createOfficeLocation, updateOfficeLocation, deleteOfficeLocation,
 } from "../../lib/siteContent";
+import {
+  FIELD_TYPES, fetchAdminListingFieldOptions, createListingFieldOption, updateListingFieldOption, deleteListingFieldOption,
+} from "../../lib/listingOptions";
 import { uploadToR2, validateImageFile } from "../../lib/r2Upload";
 
 const TABS = [
   { id: "settings", label: "Contact & Social" },
+  { id: "listing-options", label: "Listing Options" },
   { id: "tiers", label: "Partner Tiers" },
   { id: "reviews", label: "Client Reviews" },
   { id: "plans", label: "Subscription Plans" },
@@ -695,6 +699,76 @@ function OfficesPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Listing Options (property types, BHK, amenities, tags)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function ListingOptionsPanel() {
+  const [items, setItems] = useState(null);
+  const [activeType, setActiveType] = useState("property_type");
+  const [draft, setDraft] = useState("");
+
+  function load() { fetchAdminListingFieldOptions().then(({ data }) => setItems(data)); }
+  useEffect(load, []);
+
+  async function handleAdd() {
+    if (!draft.trim()) return;
+    await createListingFieldOption(activeType, draft.trim());
+    setDraft("");
+    load();
+  }
+  async function toggleActive(o) { await updateListingFieldOption(o.dbId, { active: !o.active }); load(); }
+  async function handleDelete(id) { await deleteListingFieldOption(id); load(); }
+
+  if (items === null) return <EmptyState label="Loading..." />;
+  const filtered = items.filter((o) => o.fieldType === activeType);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs" style={{ color: "#6B7280" }}>
+        These populate the dropdowns and checklists in "Post Property" (public site) and the admin listing form. Hiding an option keeps it on existing listings but removes it from the picker for new ones.
+      </p>
+      <div className="flex gap-2 flex-wrap">
+        {FIELD_TYPES.map((ft) => (
+          <button
+            key={ft.id}
+            onClick={() => setActiveType(ft.id)}
+            className="text-xs font-bold px-3 py-1.5 rounded-lg"
+            style={{ background: activeType === ft.id ? "#1F2937" : "#F1F5F9", color: activeType === ft.id ? "#FFFFFF" : "#6B7280" }}
+          >
+            {ft.label}
+          </button>
+        ))}
+      </div>
+      <Card>
+        <div className="flex gap-2 mb-4">
+          <TextInput
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={`Add a new ${FIELD_TYPES.find((f) => f.id === activeType)?.label.toLowerCase().replace(/s$/, "")}...`}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+          />
+          <button onClick={handleAdd} className="text-xs font-bold px-4 rounded-lg shrink-0" style={{ background: "#1E88E5", color: "#FFFFFF" }}>Add</button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {filtered.map((o) => (
+            <span
+              key={o.id}
+              className="flex items-center gap-2 text-xs font-semibold pl-3 pr-2 py-1.5 rounded-lg"
+              style={{ background: o.active ? "#EFF6FF" : "#F1F5F9", color: o.active ? "#1E88E5" : "#6B7280" }}
+            >
+              {o.value}
+              <button onClick={() => toggleActive(o)} className="text-[10px] font-bold underline">{o.active ? "Hide" : "Show"}</button>
+              <button onClick={() => handleDelete(o.dbId)} className="text-sm font-bold" style={{ color: "#DC2626" }}>×</button>
+            </span>
+          ))}
+          {filtered.length === 0 && <span className="text-xs" style={{ color: "#6B7280" }}>No options yet — add one above.</span>}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Export
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -727,6 +801,7 @@ export default function AdminSiteContent({ onNavigate, onLogout, adminProfile })
       </div>
 
       {activeTab === "settings" && <SettingsPanel />}
+      {activeTab === "listing-options" && <ListingOptionsPanel />}
       {activeTab === "tiers" && <TiersPanel />}
       {activeTab === "reviews" && <ReviewsPanel />}
       {activeTab === "plans" && <PlansPanel />}

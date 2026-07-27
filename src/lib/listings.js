@@ -19,6 +19,7 @@ const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1560518883-ce09059e
 // The UI (PropertyCardList/Grid, PropertyDetail, filters, etc.) always works
 // with this shape.
 export function normalizeListing(row) {
+  const bhkList = Array.isArray(row.bhk) ? row.bhk : (row.bhk ? [row.bhk] : []);
   return {
     id: row.id,
     dbId: row.id,
@@ -28,7 +29,8 @@ export function normalizeListing(row) {
     area: row.area_sqft ? `${row.area_sqft} sqft` : null,
     location: row.location,
     type: row.property_type,
-    bhk: row.bhk || null,
+    bhk: bhkList,                                 // array now — a listing can span multiple BHK configs
+    bhkLabel: bhkList.join(", ") || null,          // convenience display string, e.g. "2 BHK, 3 BHK"
     status: row.possession || null,              // possession: "Ready to Move" | "Under Construction"
     moderationStatus: row.status,                 // "Live" | "Pending" | "Flagged" | "Rejected" (admin-only concept)
     postedBy: row.posted_by,
@@ -43,6 +45,8 @@ export function normalizeListing(row) {
     facing: row.facing || null,
     age: row.age || null,
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
+    videoUrls: row.video_urls || [],
+    googleMapsLink: row.google_maps_link || null,
     badge: row.badge || null,
     badgeColor: row.badge_color || "#1E88E5",
     description: row.description || "",
@@ -63,7 +67,7 @@ export function denormalizeListing(f) {
     posted_by: f.postedBy,
     transaction_type: f.transactionType,
     possession: f.status || null,
-    bhk: f.bhk || null,
+    bhk: Array.isArray(f.bhk) ? f.bhk : (f.bhk ? [f.bhk] : []),
     area_sqft: f.area ? parseInt(f.area, 10) || null : null,
     floor: f.floor || null,
     facing: f.facing || null,
@@ -73,6 +77,8 @@ export function denormalizeListing(f) {
     amenities: f.amenities || [],
     images: f.images || [],
     image_url: f.images && f.images[0] ? f.images[0] : null,
+    video_urls: f.videoUrls || [],
+    google_maps_link: f.googleMapsLink || null,
     featured: !!f.featured,
     verified: !!f.verified,
     badge: f.badge || null,

@@ -51,7 +51,7 @@ function LeadDrawer({ lead, onClose, onStageChange, onDelete, onNavigate }) {
                 <p className="text-sm font-bold truncate" style={{ color: "#1F2937" }}>{lead.listing.title}</p>
                 <p className="text-xs truncate" style={{ color: "#6B7280" }}>
                   {lead.listing.location} · {lead.listing.price}
-                  {lead.listing.bhk ? ` · ${lead.listing.bhk}` : ""}{lead.listing.area ? ` · ${lead.listing.area}` : ""}
+                  {lead.listing.bhkLabel ? ` · ${lead.listing.bhkLabel}` : ""}{lead.listing.area ? ` · ${lead.listing.area}` : ""}
                 </p>
               </div>
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="#1E88E5" strokeWidth={2} viewBox="0 0 24 24">
