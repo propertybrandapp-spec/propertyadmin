@@ -280,6 +280,124 @@ export async function deleteInvestmentOpportunity(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Hero Content (singleton — headline, subtext, search tabs, quick CTAs, promo card)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function normalizeHeroContent(row) {
+  if (!row) return null;
+  return {
+    dbId: row.id,
+    headlinePrefix: row.headline_prefix || "",
+    headlineHighlight: row.headline_highlight || "",
+    headlineSuffix: row.headline_suffix || "",
+    subtext: row.subtext || "",
+    searchTabs: Array.isArray(row.search_tabs) ? row.search_tabs : [],
+    quickCtas: Array.isArray(row.quick_ctas) ? row.quick_ctas : [],
+    promoBadge: row.promo_badge || "",
+    promoImage: row.promo_image || "",
+    promoEyebrow: row.promo_eyebrow || "",
+    promoHeading: row.promo_heading || "",
+    promoCtaLabel: row.promo_cta_label || "",
+    promoCtaLinkType: row.promo_cta_link_type || "page",
+    promoCtaLinkValue: row.promo_cta_link_value || "",
+  };
+}
+
+export async function fetchAdminHeroContent() {
+  const { data, error } = await safeQuery(supabase.from("hero_content").select("*").limit(1));
+  if (error) return { data: null, error };
+  return { data: normalizeHeroContent(data && data[0]), error: null };
+}
+
+export async function updateHeroContent(id, content) {
+  const payload = {
+    headline_prefix: content.headlinePrefix || null,
+    headline_highlight: content.headlineHighlight || null,
+    headline_suffix: content.headlineSuffix || null,
+    subtext: content.subtext || null,
+    search_tabs: content.searchTabs || [],
+    quick_ctas: content.quickCtas || [],
+    promo_badge: content.promoBadge || null,
+    promo_image: content.promoImage || null,
+    promo_eyebrow: content.promoEyebrow || null,
+    promo_heading: content.promoHeading || null,
+    promo_cta_label: content.promoCtaLabel || null,
+    promo_cta_link_type: content.promoCtaLinkType || "page",
+    promo_cta_link_value: content.promoCtaLinkValue || null,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await safeQuery(
+    supabase.from("hero_content").update(payload).eq("id", id).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeHeroContent(data), error: null };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Hero Cards (the property-type card grid under the Hero search box)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function normalizeHeroCard(row) {
+  return {
+    id: row.id,
+    dbId: row.id,
+    image: row.image_url || "",
+    backgroundColor: row.background_color || "",
+    title: row.title || "",
+    subtitle: row.subtitle || "",
+    cta: row.cta_label || "",
+    linkType: row.link_type || "page",
+    linkValue: row.link_value || "",
+    active: row.is_active,
+    order: row.display_order,
+    createdAt: row.created_at,
+  };
+}
+
+export async function fetchAdminHeroCards() {
+  const { data, error } = await safeQuery(
+    supabase.from("hero_cards").select("*").order("display_order", { ascending: true })
+  );
+  if (error) return { data: [], error };
+  return { data: (data || []).map(normalizeHeroCard), error: null };
+}
+
+function denormalizeHeroCard(c) {
+  return {
+    image_url: c.image || null,
+    background_color: c.backgroundColor || null,
+    title: c.title,
+    subtitle: c.subtitle || null,
+    cta_label: c.cta || "Explore",
+    link_type: c.linkType || "page",
+    link_value: c.linkValue || null,
+    is_active: c.active !== false,
+    display_order: c.order || 0,
+  };
+}
+
+export async function createHeroCard(card) {
+  const { data, error } = await safeQuery(
+    supabase.from("hero_cards").insert(denormalizeHeroCard(card)).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeHeroCard(data), error: null };
+}
+
+export async function updateHeroCard(id, card) {
+  const { data, error } = await safeQuery(
+    supabase.from("hero_cards").update(denormalizeHeroCard(card)).eq("id", id).select().single()
+  );
+  if (error) return { data: null, error };
+  return { data: normalizeHeroCard(data), error: null };
+}
+
+export async function deleteHeroCard(id) {
+  const { error } = await safeQuery(supabase.from("hero_cards").delete().eq("id", id));
+  return { error };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Site Settings (singleton — contact info + social links)
 // ═══════════════════════════════════════════════════════════════════════════
 

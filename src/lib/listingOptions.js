@@ -10,6 +10,7 @@ export const FIELD_TYPES = [
   { id: "bhk", label: "BHK Options" },
   { id: "amenity", label: "Amenities" },
   { id: "tag", label: "Tags" },
+  { id: "budget_range", label: "Budget Ranges" },
 ];
 
 function normalizeOption(row) {
