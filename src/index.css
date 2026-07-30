@@ -1,5 +1,62 @@
 @import "tailwindcss";
 
+/* ── Tailwind v4 theme registration ─────────────────────────────────────────
+   IMPORTANT: Tailwind v4's Vite plugin does NOT read tailwind.config.js on
+   its own — v4 moved to CSS-first configuration. Without this @theme block
+   (or an explicit `@config "../tailwind.config.js";` line), every custom
+   token defined in tailwind.config.js (pb-navy, pb-blue, glow-*, gradient-*,
+   etc.) silently compiles to nothing, no matter how a component uses it.
+   tailwind.config.js is kept as documentation/IDE-autocomplete, but this
+   block is what actually makes the classes work — keep the two in sync. */
+@theme {
+  --color-pb-navy: #0F2D52;
+  --color-pb-blue: #1E88E5;
+  --color-pb-gold: #D4AF37;
+  --color-pb-orange: #F59E0B;
+  --color-pb-red: #DC2626;
+  --color-pb-maroon: #B91C1C;
+
+  --color-pb-dark: #FFFFFF;
+  --color-pb-surface: #FFFFFF;
+  --color-pb-raised: #F1F5F9;
+
+  --color-pb-light: #1F2937;
+  --color-pb-muted: #6B7280;
+  --color-pb-silver: #1F2937;
+
+  --color-pb-border: #E2E8F0;
+  --color-pb-border2: #E2E8F0;
+
+  --color-pb-blue-tint: #EFF6FF;
+  --color-pb-red-tint: #FEE2E2;
+  --color-pb-orange-tint: #FEF3C7;
+
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+
+  --shadow-glow-navy: 0 0 24px rgba(15, 45, 82, 0.20);
+  --shadow-glow-blue: 0 0 24px rgba(30, 136, 229, 0.15);
+  --shadow-glow-gold: 0 0 24px rgba(212, 175, 55, 0.20);
+  --shadow-glow-red: 0 0 24px rgba(220, 38, 38, 0.20);
+  --shadow-glow-orange: 0 0 24px rgba(245, 158, 11, 0.15);
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+
+  --background-image-gradient-dark: linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 100%);
+  --background-image-gradient-blue: linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%);
+  --background-image-gradient-premium: linear-gradient(135deg, #0F2D52 0%, #1E88E5 100%);
+  --background-image-gradient-red: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+  --background-image-radial-blue: radial-gradient(ellipse at 50% 0%, rgba(30,136,229,0.08) 0%, transparent 70%);
+  --background-image-radial-red: radial-gradient(ellipse at 50% 100%, rgba(220,38,38,0.06) 0%, transparent 70%);
+
+  /* References the @keyframes further down this file (fadeIn / pulse-dot / shimmer) */
+  --animate-fade-in: fadeIn 0.3s ease forwards;
+  --animate-pulse-dot: pulse-dot 1.5s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.5s infinite;
+}
+
 /* ── CSS Custom Properties ──────────────────────────────────────────────────── */
 :root {
   --primary-blue: #1E88E5;
