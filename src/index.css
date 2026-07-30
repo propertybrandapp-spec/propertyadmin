@@ -21,6 +21,36 @@
   --blue-tint: #EFF6FF;
   --red-tint: #FEE2E2;
   --orange-tint: #FEF3C7;
+
+  /* ── Brand palette (canonical names) ─────────────────────────────────────
+     "Premium Real Estate" palette — single source of truth for the site's
+     color system going forward. The aliases above are kept only so nothing
+     already referencing them breaks; new work should prefer these names.
+     Primary = Deep Navy (premium/emphasis moments) · Secondary = Bright
+     Blue (everyday buttons/links, does most of the work) · Accent = Gold
+     (used sparingly for luxury/premium touches). */
+  --color-primary: #0F2D52;
+  --color-secondary: var(--primary-blue);
+  --color-secondary-hover: #1565C0;
+  --color-accent: #D4AF37;
+  --color-background: #F8FAFC;
+  --color-card: var(--surface);
+  --color-text-primary: var(--text-light);
+  --color-text-secondary: var(--text-muted);
+  --color-success: #16A34A;
+  --color-warning: var(--accent-orange);
+  --color-error: var(--brand-red);
+  --color-error-hover: var(--deep-maroon);
+  --color-border: var(--border-subtle);
+
+  /* Reference only (not yet consumed by any component) — badge and
+     category color conventions, kept here so they're defined once and
+     stay consistent whenever they do get built:
+       Badges:     Verified=Blue · RERA Approved=Green · New Launch=Orange
+                   · Luxury=Gold · Hot Deal=Red · Ready to Move=Green
+       Categories: Buy=Blue · Rent=Green · Commercial=Purple · New
+                   Launch=Orange · Luxury=Gold · Plots=Brown(#92400E) ·
+                   Senior Living=Teal(#0D9488) */
 }
 
 /* ── Reset & Base (scoped to @layer base so Tailwind utilities always win) ──── */
@@ -34,7 +64,7 @@
   body {
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont,
       'Helvetica Neue', Arial, sans-serif;
-    background-color: var(--bg-dark);
+    background-color: var(--color-background);
     color: var(--text-light);
     line-height: 1.55;
     letter-spacing: -0.005em;
@@ -213,12 +243,21 @@ input[type='range']::-moz-range-thumb {
 }
 
 .btn-primary {
-  background: var(--brand-red);
-  color: var(--text-light);
+  background: var(--color-secondary);
+  color: #FFFFFF;
 }
 
 .btn-primary:hover {
-  background: var(--deep-maroon);
+  background: var(--color-secondary-hover);
+}
+
+.btn-premium {
+  background: var(--color-primary);
+  color: #FFFFFF;
+}
+
+.btn-premium:hover {
+  background: #0a1f3a;
 }
 
 .btn-secondary {
@@ -296,6 +335,12 @@ input[type='range']::-moz-range-thumb {
   background: rgba(74, 222, 128, 0.1);
   color: #4ade80;
   border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.badge-gold {
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--color-accent);
+  border: 1px solid rgba(212, 175, 55, 0.3);
 }
 
 /* ── Input Base ─────────────────────────────────────────────────────────────── */

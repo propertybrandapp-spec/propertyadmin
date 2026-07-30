@@ -3,6 +3,7 @@ import AdminLayout from "./AdminLayout";
 import { createListing, updateListing, deleteListing } from "../../lib/listings";
 import { uploadToR2, validateImageFile } from "../../lib/r2Upload";
 import { fetchActiveListingFieldOptionsGrouped } from "../../lib/listingOptions";
+import LocationPicker from "./LocationPicker";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 // Fallback defaults — used until the dynamic options load (or if "Site
@@ -18,9 +19,10 @@ const POSTED_BY_OPTIONS = ["Owner", "Builder", "Agent"];
 const MODERATION_OPTIONS = ["Live", "Pending", "Flagged", "Rejected"];
 const BADGE_COLOR_PRESETS = [
   { label: "Blue", value: "#1E88E5" },
-  { label: "Red", value: "#1E88E5" },
-  { label: "Orange", value: "#F59E0B" },
   { label: "Green", value: "#16A34A" },
+  { label: "Orange", value: "#F59E0B" },
+  { label: "Gold", value: "#D4AF37" },
+  { label: "Red", value: "#DC2626" },
   { label: "Purple", value: "#a78bfa" },
 ];
 
@@ -40,6 +42,8 @@ const EMPTY_FORM = {
   moderationStatus: "Pending",
   description: "",
   googleMapsLink: "",
+  latitude: null,
+  longitude: null,
   videoUrls: [],
   tags: [],
   amenities: [],
@@ -271,7 +275,15 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </div>
           </Field>
 
-          <Field label="Google Maps Location">
+          <Field label="Pin Location on Map" hint="Powers the interactive map shown on the property's public page.">
+            <LocationPicker
+              latitude={form.latitude}
+              longitude={form.longitude}
+              onChange={({ latitude, longitude }) => setForm((f) => ({ ...f, latitude, longitude }))}
+            />
+          </Field>
+
+          <Field label="Google Maps Link (optional)" hint="Only needed to make the &quot;Get Directions&quot; button open a specific saved link instead of the pin above.">
             <TextInput value={form.googleMapsLink} onChange={(e) => set("googleMapsLink", e.target.value)} placeholder="Paste a Google Maps share link (optional)" />
           </Field>
 

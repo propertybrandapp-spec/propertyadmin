@@ -8,7 +8,9 @@ export default {
     extend: {
       colors: {
         // Brand palette
+        "pb-navy":    "#0F2D52",
         "pb-blue":    "#1E88E5",
+        "pb-gold":    "#D4AF37",
         "pb-orange":  "#F59E0B",
         "pb-red":     "#DC2626",
         "pb-maroon":  "#B91C1C",
@@ -45,7 +47,9 @@ export default {
         ],
       },
       boxShadow: {
+        "glow-navy":   "0 0 24px rgba(15, 45, 82, 0.20)",
         "glow-blue":   "0 0 24px rgba(30, 136, 229, 0.15)",
+        "glow-gold":   "0 0 24px rgba(212, 175, 55, 0.20)",
         "glow-red":    "0 0 24px rgba(220, 38, 38, 0.20)",
         "glow-orange": "0 0 24px rgba(245, 158, 11, 0.15)",
         "card":        "0 2px 16px rgba(0, 0, 0, 0.4)",
@@ -60,6 +64,8 @@ export default {
           "linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 100%)",
         "gradient-blue":
           "linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%)",
+        "gradient-premium":
+          "linear-gradient(135deg, #0F2D52 0%, #1E88E5 100%)",
         "gradient-red":
           "linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)",
         "radial-blue":
