@@ -9,7 +9,7 @@ import LocationPicker from "./LocationPicker";
 // Fallback defaults — used until the dynamic options load (or if "Site
 // Content" → Listing Options is still empty). Manage the live lists from
 // that admin tab instead of editing these.
-const DEFAULT_PROPERTY_TYPES = ["Apartment", "Villa", "Independent House", "Plot", "Commercial", "Office Space", "Shop / Showroom", "Warehouse / Industrial Shed", "Farmhouse", "Penthouse", "Studio Apartment", "Agricultural Land"];
+const DEFAULT_PROPERTY_TYPES = ["Apartment", "Villa", "Independent House", "Plot", "Commercial", "Office Space", "Shop / Showroom", "Warehouse / Industrial Shed", "Farmhouse", "Penthouse", "Studio Apartment", "Agricultural Land", "Office", "Retail", "Industrial", "Co-living", "Student Accommodation"];
 const DEFAULT_BHK_OPTIONS = ["1 RK", "1 BHK", "2 BHK", "3 BHK", "4 BHK", "5 BHK", "5+ BHK"];
 const DEFAULT_TAGS_LIST = ["Luxury", "Affordable", "Gated Community", "Office", "Retail", "Industrial", "Co-living", "Student Accommodation", "New Launch", "Ready to Move", "RERA Approved", "Corner Plot", "Investment Opportunity"];
 const DEFAULT_AMENITIES = ["Lift", "Parking", "Visitor Parking", "Power Backup", "Security", "24x7 Security", "CCTV", "Intercom", "Swimming Pool", "Gym", "Garden", "Club House", "Multipurpose Hall", "Indoor Games", "Kids Play Area", "Jogging Track", "Amphitheatre", "Yoga / Meditation Area", "Senior Citizen Sitout", "Cafeteria", "WiFi", "Housekeeping", "Fire Safety", "Rain Water Harvesting", "Sewage Treatment Plant", "Solar Water Heating", "EV Charging Point", "Water Softener Plant", "Vaastu Compliant", "Pet Friendly", "Gated Community"];
@@ -17,6 +17,11 @@ const FACING_OPTIONS = ["North", "South", "East", "West", "North-East", "North-W
 const POSSESSION_OPTIONS = ["Ready to Move", "Under Construction"];
 const POSTED_BY_OPTIONS = ["Owner", "Builder", "Agent"];
 const MODERATION_OPTIONS = ["Live", "Pending", "Flagged", "Rejected"];
+// ── New in Section 2A: Property Identity & Basic Details ──
+const LISTING_TYPE_OPTIONS = ["Sale", "Rent", "Lease", "Resale", "New Launch", "Under Construction"];
+const VASTU_OPTIONS = ["Vastu Compliant", "Not Vastu Compliant", "Not Specified"];
+const FURNISHING_OPTIONS = ["Unfurnished", "Semi-furnished", "Fully furnished"];
+const CONDITION_OPTIONS = ["New", "Renovated", "Well maintained", "Needs renovation"];
 const BADGE_COLOR_PRESETS = [
   { label: "Blue", value: "#1E88E5" },
   { label: "Green", value: "#16A34A" },
@@ -31,6 +36,7 @@ const EMPTY_FORM = {
   location: "",
   type: "Apartment",
   transactionType: "Buy",
+  listingType: "Sale",
   priceRaw: "",
   bhk: [],
   area: "",
@@ -52,6 +58,27 @@ const EMPTY_FORM = {
   verified: false,
   badge: "",
   badgeColor: "#1E88E5",
+
+  // ── Section 2A: Property Identity & Basic Details ──
+  listingCode: "",          // read-only, server-generated — never submitted
+  projectName: "",
+  towerBlock: "",
+  unitNumber: "",
+  unitNumberPublic: true,
+  bathrooms: "",
+  balconies: "",
+  servantRoom: false,
+  builtUpArea: "",
+  superBuiltUpArea: "",
+  carpetArea: "",
+  plotArea: "",
+  floorNumber: "",
+  totalFloors: "",
+  totalUnits: "",
+  entranceDirection: "",
+  vastuStatus: "Not Specified",
+  furnishing: "",
+  condition: "",
 };
 
 // ── Small building blocks ──────────────────────────────────────────────────────
@@ -105,7 +132,33 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     // editingListing.area comes back as a display string like "1865 sqft" —
     // the number input needs just the numeric part.
     const areaNumeric = editingListing.area ? parseInt(editingListing.area, 10) || "" : "";
-    return { ...EMPTY_FORM, ...editingListing, area: areaNumeric };
+    // Nullable DB-backed fields come back as `null` from normalizeListing —
+    // swap those for "" so number/text inputs stay controlled (avoids the
+    // "value prop should not be null" React warning).
+    const nullToEmpty = (v) => (v === null || v === undefined ? "" : v);
+    return {
+      ...EMPTY_FORM,
+      ...editingListing,
+      area: areaNumeric,
+      listingCode: nullToEmpty(editingListing.listingCode),
+      listingType: nullToEmpty(editingListing.listingType) || EMPTY_FORM.listingType,
+      projectName: nullToEmpty(editingListing.projectName),
+      towerBlock: nullToEmpty(editingListing.towerBlock),
+      unitNumber: nullToEmpty(editingListing.unitNumber),
+      bathrooms: nullToEmpty(editingListing.bathrooms),
+      balconies: nullToEmpty(editingListing.balconies),
+      builtUpArea: nullToEmpty(editingListing.builtUpArea),
+      superBuiltUpArea: nullToEmpty(editingListing.superBuiltUpArea),
+      carpetArea: nullToEmpty(editingListing.carpetArea),
+      plotArea: nullToEmpty(editingListing.plotArea),
+      floorNumber: nullToEmpty(editingListing.floorNumber),
+      totalFloors: nullToEmpty(editingListing.totalFloors),
+      totalUnits: nullToEmpty(editingListing.totalUnits),
+      entranceDirection: nullToEmpty(editingListing.entranceDirection),
+      vastuStatus: nullToEmpty(editingListing.vastuStatus) || EMPTY_FORM.vastuStatus,
+      furnishing: nullToEmpty(editingListing.furnishing),
+      condition: nullToEmpty(editingListing.condition),
+    };
   });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -249,7 +302,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           </Field>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <Field label="Listing Type">
+            <Field label="Transaction Type" hint="Drives the site's Buy/Rent nav filter.">
               <Select value={form.transactionType} onChange={(e) => set("transactionType", e.target.value)}>
                 <option value="Buy">For Sale (Buy)</option>
                 <option value="Rent">For Rent</option>
@@ -287,21 +340,9 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             <TextInput value={form.googleMapsLink} onChange={(e) => set("googleMapsLink", e.target.value)} placeholder="Paste a Google Maps share link (optional)" />
           </Field>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Field label={`Price (${form.transactionType === "Rent" ? "₹ / month" : "₹ total"})`} required>
               <TextInput type="number" min="0" value={form.priceRaw} onChange={(e) => set("priceRaw", e.target.value)} placeholder="e.g. 24000000" required />
-            </Field>
-            <Field label="Area (sqft)">
-              <TextInput type="number" min="0" value={form.area} onChange={(e) => set("area", e.target.value)} placeholder="e.g. 1865" />
-            </Field>
-            <Field label="Floor">
-              <TextInput value={form.floor} onChange={(e) => set("floor", e.target.value)} placeholder="e.g. 8th of 12" />
-            </Field>
-            <Field label="Facing">
-              <Select value={form.facing} onChange={(e) => set("facing", e.target.value)}>
-                <option value="">— N/A —</option>
-                {FACING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-              </Select>
             </Field>
           </div>
 
@@ -311,10 +352,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </p>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <Field label="Age of Property">
-              <TextInput value={form.age} onChange={(e) => set("age", e.target.value)} placeholder="e.g. 2 years / New" />
-            </Field>
+          <div className="grid grid-cols-2 gap-4">
             <Field label="Posted By">
               <Select value={form.postedBy} onChange={(e) => set("postedBy", e.target.value)}>
                 {POSTED_BY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -337,6 +375,117 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               style={inputStyle}
             />
           </Field>
+        </div>
+
+        {/* ── Property Identity & Configuration (Section 2A) ── */}
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Property Identity &amp; Configuration</h2>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>Project identity, room configuration, area breakdown, and structural details.</p>
+          </div>
+
+          {isEditing && form.listingCode && (
+            <Field label="Listing ID" hint="Auto-assigned when the listing was created — not editable.">
+              <div className="text-sm font-bold px-3.5 py-2.5 rounded-xl" style={{ background: "#F1F5F9", color: "#1F2937" }}>{form.listingCode}</div>
+            </Field>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Project Name" hint="Optional — e.g. builder project name.">
+              <TextInput value={form.projectName} onChange={(e) => set("projectName", e.target.value)} placeholder="e.g. Skyline Residency" />
+            </Field>
+            <Field label="Tower / Block">
+              <TextInput value={form.towerBlock} onChange={(e) => set("towerBlock", e.target.value)} placeholder="e.g. Tower B" />
+            </Field>
+            <Field label="Unit Number">
+              <TextInput value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder="e.g. 1204" />
+            </Field>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+            <input type="checkbox" checked={form.unitNumberPublic} onChange={(e) => set("unitNumberPublic", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+            Show unit number on the public listing
+          </label>
+
+          <Field label="Listing Type" hint="Independent of Transaction Type / Possession above — the richer classification used for badges and filters.">
+            <Select value={form.listingType} onChange={(e) => set("listingType", e.target.value)}>
+              {LISTING_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          </Field>
+
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Bathrooms">
+              <TextInput type="number" min="0" value={form.bathrooms} onChange={(e) => set("bathrooms", e.target.value)} placeholder="e.g. 2" />
+            </Field>
+            <Field label="Balconies">
+              <TextInput type="number" min="0" value={form.balconies} onChange={(e) => set("balconies", e.target.value)} placeholder="e.g. 1" />
+            </Field>
+            <div className="flex items-end pb-2.5">
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+                <input type="checkbox" checked={form.servantRoom} onChange={(e) => set("servantRoom", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+                Servant Room
+              </label>
+            </div>
+          </div>
+
+          <Field label="Area Breakdown (sqft)" hint="Fill in whichever apply — e.g. plots typically only need Plot Area.">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <TextInput type="number" min="0" value={form.builtUpArea} onChange={(e) => set("builtUpArea", e.target.value)} placeholder="Built-up" />
+              <TextInput type="number" min="0" value={form.superBuiltUpArea} onChange={(e) => set("superBuiltUpArea", e.target.value)} placeholder="Super Built-up" />
+              <TextInput type="number" min="0" value={form.carpetArea} onChange={(e) => set("carpetArea", e.target.value)} placeholder="Carpet" />
+              <TextInput type="number" min="0" value={form.plotArea} onChange={(e) => set("plotArea", e.target.value)} placeholder="Plot" />
+            </div>
+          </Field>
+
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Floor Number" hint="0 = ground floor">
+              <TextInput type="number" min="0" value={form.floorNumber} onChange={(e) => set("floorNumber", e.target.value)} placeholder="e.g. 8" />
+            </Field>
+            <Field label="Total Floors">
+              <TextInput type="number" min="0" value={form.totalFloors} onChange={(e) => set("totalFloors", e.target.value)} placeholder="e.g. 12" />
+            </Field>
+            <Field label="Total Units in Project">
+              <TextInput type="number" min="0" value={form.totalUnits} onChange={(e) => set("totalUnits", e.target.value)} placeholder="e.g. 240" />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <Field label="Facing">
+              <Select value={form.facing} onChange={(e) => set("facing", e.target.value)}>
+                <option value="">— N/A —</option>
+                {FACING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </Select>
+            </Field>
+            <Field label="Entrance Direction">
+              <Select value={form.entranceDirection} onChange={(e) => set("entranceDirection", e.target.value)}>
+                <option value="">— N/A —</option>
+                {FACING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </Select>
+            </Field>
+            <Field label="Vastu Status">
+              <Select value={form.vastuStatus} onChange={(e) => set("vastuStatus", e.target.value)}>
+                {VASTU_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <Field label="Furnishing">
+              <Select value={form.furnishing} onChange={(e) => set("furnishing", e.target.value)}>
+                <option value="">— N/A —</option>
+                {FURNISHING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </Select>
+            </Field>
+            <Field label="Condition">
+              <Select value={form.condition} onChange={(e) => set("condition", e.target.value)}>
+                <option value="">— N/A —</option>
+                {CONDITION_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="Age of Property">
+              <TextInput value={form.age} onChange={(e) => set("age", e.target.value)} placeholder="e.g. 2 years / New" />
+            </Field>
+          </div>
         </div>
 
         {/* ── Photos ── */}

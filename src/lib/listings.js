@@ -23,6 +23,7 @@ export function normalizeListing(row) {
   return {
     id: row.id,
     dbId: row.id,
+    listingCode: row.listing_code || null,        // human-readable ID, e.g. "PB000042" — auto-assigned by DB trigger
     title: row.title,
     price: row.price_label,
     priceRaw: Number(row.price_value) || 0,
@@ -39,11 +40,41 @@ export function normalizeListing(row) {
     verified: !!row.verified,
     featured: !!row.featured,
     transactionType: row.transaction_type || "Buy",
+    listingType: row.listing_type || null,        // Sale | Rent | Lease | Resale | New Launch | Under Construction
     tags: row.tags || [],
     amenities: row.amenities || [],
     floor: row.floor || null,
     facing: row.facing || null,
     age: row.age || null,
+
+    // ── Project identity ──
+    projectName: row.project_name || null,
+    towerBlock: row.tower_block || null,
+    unitNumber: row.unit_number || null,
+    unitNumberPublic: row.unit_number_public !== false,
+
+    // ── Room configuration ──
+    bathrooms: row.bathrooms != null ? row.bathrooms : null,
+    balconies: row.balconies != null ? row.balconies : null,
+    servantRoom: !!row.servant_room,
+
+    // ── Area breakdown (sqft) ──
+    builtUpArea: row.built_up_area_sqft != null ? row.built_up_area_sqft : null,
+    superBuiltUpArea: row.super_built_up_area_sqft != null ? row.super_built_up_area_sqft : null,
+    carpetArea: row.carpet_area_sqft != null ? row.carpet_area_sqft : null,
+    plotArea: row.plot_area_sqft != null ? row.plot_area_sqft : null,
+
+    // ── Floor / tower structure ──
+    floorNumber: row.floor_number != null ? row.floor_number : null,
+    totalFloors: row.total_floors != null ? row.total_floors : null,
+    totalUnits: row.total_units != null ? row.total_units : null,
+
+    // ── Direction, Vastu, furnishing, condition ──
+    entranceDirection: row.entrance_direction || null,
+    vastuStatus: row.vastu_status || null,
+    furnishing: row.furnishing || null,
+    condition: row.property_condition || null,
+
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     videoUrls: row.video_urls || [],
     googleMapsLink: row.google_maps_link || null,
@@ -57,8 +88,33 @@ export function normalizeListing(row) {
   };
 }
 
+// 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 4 -> "4th", 11-13 -> "th", etc.
+function ordinal(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// Builds the legacy free-text `floor` display string (e.g. "8th of 12") from
+// the new structured floor_number/total_floors fields, so existing display
+// code (property cards, PropertyDetail quick facts) keeps working unchanged.
+function deriveFloorText(floorNumber, totalFloors) {
+  if (floorNumber == null || floorNumber === "") return null;
+  const n = parseInt(floorNumber, 10);
+  if (Number.isNaN(n)) return null;
+  if (n === 0) return totalFloors ? `Ground of ${totalFloors}` : "Ground";
+  return totalFloors ? `${ordinal(n)} of ${totalFloors}` : `${ordinal(n)} Floor`;
+}
+
 // ── UI shape (admin form) -> DB row ──────────────────────────────────────────
 export function denormalizeListing(f) {
+  const builtUpArea = f.builtUpArea ? parseInt(f.builtUpArea, 10) || null : null;
+  const superBuiltUpArea = f.superBuiltUpArea ? parseInt(f.superBuiltUpArea, 10) || null : null;
+  const carpetArea = f.carpetArea ? parseInt(f.carpetArea, 10) || null : null;
+  const plotArea = f.plotArea ? parseInt(f.plotArea, 10) || null : null;
+  const floorNumber = f.floorNumber !== "" && f.floorNumber != null ? parseInt(f.floorNumber, 10) : null;
+  const totalFloors = f.totalFloors ? parseInt(f.totalFloors, 10) || null : null;
+
   return {
     title: f.title,
     location: f.location,
@@ -68,10 +124,17 @@ export function denormalizeListing(f) {
     status: f.moderationStatus || "Pending",
     posted_by: f.postedBy,
     transaction_type: f.transactionType,
+    listing_type: f.listingType || null,
     possession: f.status || null,
     bhk: Array.isArray(f.bhk) ? f.bhk : (f.bhk ? [f.bhk] : []),
-    area_sqft: f.area ? parseInt(f.area, 10) || null : null,
-    floor: f.floor || null,
+    // area_sqft stays in sync automatically — first area figure the admin/owner
+    // actually filled in (built-up > super built-up > carpet > plot), falling
+    // back to a legacy plain "area" value only if none of those are set — so
+    // existing cards, sorting, and search filters keep working unchanged.
+    area_sqft: builtUpArea || superBuiltUpArea || carpetArea || plotArea || (f.area ? parseInt(f.area, 10) || null : null),
+    // legacy `floor` text stays in sync from the structured fields below,
+    // unless something already set it directly (e.g. old data).
+    floor: deriveFloorText(floorNumber, totalFloors) || f.floor || null,
     facing: f.facing || null,
     age: f.age || null,
     description: f.description || null,
@@ -87,6 +150,35 @@ export function denormalizeListing(f) {
     verified: !!f.verified,
     badge: f.badge || null,
     badge_color: f.badgeColor || null,
+
+    // ── Project identity ── (listing_code is server-generated; never written here)
+    project_name: f.projectName || null,
+    tower_block: f.towerBlock || null,
+    unit_number: f.unitNumber || null,
+    unit_number_public: f.unitNumberPublic !== false,
+
+    // ── Room configuration ──
+    bathrooms: f.bathrooms !== "" && f.bathrooms != null ? parseInt(f.bathrooms, 10) || null : null,
+    balconies: f.balconies !== "" && f.balconies != null ? parseInt(f.balconies, 10) || null : null,
+    servant_room: !!f.servantRoom,
+
+    // ── Area breakdown ──
+    built_up_area_sqft: builtUpArea,
+    super_built_up_area_sqft: superBuiltUpArea,
+    carpet_area_sqft: carpetArea,
+    plot_area_sqft: plotArea,
+
+    // ── Floor / tower structure ──
+    floor_number: floorNumber,
+    total_floors: totalFloors,
+    total_units: f.totalUnits ? parseInt(f.totalUnits, 10) || null : null,
+
+    // ── Direction, Vastu, furnishing, condition ──
+    entrance_direction: f.entranceDirection || null,
+    vastu_status: f.vastuStatus || null,
+    furnishing: f.furnishing || null,
+    property_condition: f.condition || null,
+
     updated_at: new Date().toISOString(),
   };
 }
