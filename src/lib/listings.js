@@ -75,6 +75,44 @@ export function normalizeListing(row) {
     furnishing: row.furnishing || null,
     condition: row.property_condition || null,
 
+    // ── Section 2B: Price & Financial Transparency ──
+    priceNegotiable: !!row.price_negotiable,
+    priceType: row.price_type || null,                                  // "All-Inclusive" | "Base Price"
+    pricePerSqft: row.price_per_sqft != null ? Number(row.price_per_sqft) : null,  // DB-generated, read-only
+
+    costBase: row.cost_base != null ? Number(row.cost_base) : null,
+    costFloorRise: row.cost_floor_rise != null ? Number(row.cost_floor_rise) : null,
+    costParking: row.cost_parking != null ? Number(row.cost_parking) : null,
+    costClubhouse: row.cost_clubhouse != null ? Number(row.cost_clubhouse) : null,
+    costPlc: row.cost_plc != null ? Number(row.cost_plc) : null,
+    costGst: row.cost_gst != null ? Number(row.cost_gst) : null,
+    costRegistration: row.cost_registration != null ? Number(row.cost_registration) : null,
+    costMaintenanceDeposit: row.cost_maintenance_deposit != null ? Number(row.cost_maintenance_deposit) : null,
+    costOther: row.cost_other != null ? Number(row.cost_other) : null,
+    costOtherLabel: row.cost_other_label || null,
+
+    maintenanceAmount: row.maintenance_amount != null ? Number(row.maintenance_amount) : null,
+    maintenanceFrequency: row.maintenance_frequency || null,
+
+    securityDeposit: row.security_deposit != null ? Number(row.security_deposit) : null,
+    brokerageType: row.brokerage_type || null,
+    brokerageAmount: row.brokerage_amount != null ? Number(row.brokerage_amount) : null,
+    lockInPeriod: row.lock_in_period || null,
+    noticePeriod: row.notice_period || null,
+    leaseTerms: row.lease_terms || null,
+
+    emiInterestRate: row.emi_interest_rate != null ? Number(row.emi_interest_rate) : 8.5,
+    emiTenureYears: row.emi_tenure_years != null ? Number(row.emi_tenure_years) : 20,
+    emiDownPaymentPercent: row.emi_down_payment_percent != null ? Number(row.emi_down_payment_percent) : 20,
+
+    approvedBanks: row.approved_banks || [],
+    loanEligibilityNotes: row.loan_eligibility_notes || null,
+
+    estimatedMonthlyRent: row.estimated_monthly_rent != null ? Number(row.estimated_monthly_rent) : null,
+    rentalYieldPercent: row.rental_yield_percent != null ? Number(row.rental_yield_percent) : null,  // DB-generated
+    appreciationPotential: row.appreciation_potential || null,
+    recommendedHoldingPeriod: row.recommended_holding_period || null,
+
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     videoUrls: row.video_urls || [],
     googleMapsLink: row.google_maps_link || null,
@@ -85,6 +123,7 @@ export function normalizeListing(row) {
     description: row.description || "",
     views: row.views || 0,
     createdAt: row.created_at,
+    updatedAt: row.updated_at || row.created_at,
   };
 }
 
@@ -179,8 +218,56 @@ export function denormalizeListing(f) {
     furnishing: f.furnishing || null,
     property_condition: f.condition || null,
 
+    // ── Section 2B: Price & Financial Transparency ──
+    // NOTE: price_per_sqft and rental_yield_percent are NOT written here —
+    // they're DB-generated columns (STORED GENERATED ALWAYS AS), computed
+    // automatically from price_value/area_sqft and estimated_monthly_rent.
+    // Supabase/Postgres rejects any insert/update that tries to set them.
+    price_negotiable: !!f.priceNegotiable,
+    price_type: f.priceType || null,
+
+    cost_base: numOrNull(f.costBase),
+    cost_floor_rise: numOrNull(f.costFloorRise),
+    cost_parking: numOrNull(f.costParking),
+    cost_clubhouse: numOrNull(f.costClubhouse),
+    cost_plc: numOrNull(f.costPlc),
+    cost_gst: numOrNull(f.costGst),
+    cost_registration: numOrNull(f.costRegistration),
+    cost_maintenance_deposit: numOrNull(f.costMaintenanceDeposit),
+    cost_other: numOrNull(f.costOther),
+    cost_other_label: f.costOtherLabel || null,
+
+    maintenance_amount: numOrNull(f.maintenanceAmount),
+    maintenance_frequency: f.maintenanceFrequency || null,
+
+    security_deposit: numOrNull(f.securityDeposit),
+    brokerage_type: f.brokerageType || null,
+    brokerage_amount: numOrNull(f.brokerageAmount),
+    lock_in_period: f.lockInPeriod || null,
+    notice_period: f.noticePeriod || null,
+    lease_terms: f.leaseTerms || null,
+
+    emi_interest_rate: f.emiInterestRate !== "" && f.emiInterestRate != null ? Number(f.emiInterestRate) : 8.5,
+    emi_tenure_years: f.emiTenureYears !== "" && f.emiTenureYears != null ? parseInt(f.emiTenureYears, 10) : 20,
+    emi_down_payment_percent: f.emiDownPaymentPercent !== "" && f.emiDownPaymentPercent != null ? Number(f.emiDownPaymentPercent) : 20,
+
+    approved_banks: Array.isArray(f.approvedBanks) ? f.approvedBanks : [],
+    loan_eligibility_notes: f.loanEligibilityNotes || null,
+
+    estimated_monthly_rent: numOrNull(f.estimatedMonthlyRent),
+    appreciation_potential: f.appreciationPotential || null,
+    recommended_holding_period: f.recommendedHoldingPeriod || null,
+
     updated_at: new Date().toISOString(),
   };
+}
+
+// Small helper — "" / null / undefined -> null, otherwise a parsed number.
+// Used throughout denormalizeListing for the many optional numeric fields.
+function numOrNull(v) {
+  if (v === "" || v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
 }
 
 function daysAgo(isoDate) {
@@ -263,4 +350,48 @@ export async function deleteListing(id, images) {
   }
   const { error } = await safeQuery(supabase.from("listings").delete().eq("id", id));
   return { error };
+}
+
+// ── Section 2B: Price & Financial Transparency helpers ─────────────────────
+
+// Every price change (auto-logged by a DB trigger — see migration_014),
+// newest first. Powers the "Price History" list on the property detail page.
+export async function fetchPriceHistory(listingId) {
+  const { data, error } = await safeQuery(
+    supabase.from("listing_price_history").select("*").eq("listing_id", listingId).order("changed_at", { ascending: false })
+  );
+  if (error) return { data: [], error };
+  return {
+    data: (data || []).map((row) => ({
+      priceValue: Number(row.price_value) || 0,
+      priceLabel: row.price_label,
+      changedAt: row.changed_at,
+    })),
+    error: null,
+  };
+}
+
+// "Comparable price range in the same locality" — other Live listings that
+// share the exact `location` text (case-insensitive), same as the matching
+// the location filter on SearchResults already uses. Returns min/max/avg
+// price-per-sqft plus how many comparable listings that's based on.
+export async function fetchComparableListings(location, excludeId) {
+  if (!location) return { data: null, error: null };
+  const { data, error } = await safeQuery(
+    supabase.from("listings").select("id, price_per_sqft").eq("status", "Live").ilike("location", location)
+  );
+  if (error) return { data: null, error };
+  const prices = (data || [])
+    .filter((r) => r.id !== excludeId && r.price_per_sqft != null)
+    .map((r) => Number(r.price_per_sqft));
+  if (prices.length === 0) return { data: null, error: null };
+  return {
+    data: {
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+      avg: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
+      count: prices.length,
+    },
+    error: null,
+  };
 }

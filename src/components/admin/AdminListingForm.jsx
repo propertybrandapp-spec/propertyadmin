@@ -22,6 +22,12 @@ const LISTING_TYPE_OPTIONS = ["Sale", "Rent", "Lease", "Resale", "New Launch", "
 const VASTU_OPTIONS = ["Vastu Compliant", "Not Vastu Compliant", "Not Specified"];
 const FURNISHING_OPTIONS = ["Unfurnished", "Semi-furnished", "Fully furnished"];
 const CONDITION_OPTIONS = ["New", "Renovated", "Well maintained", "Needs renovation"];
+// ── New in Section 2B: Price & Financial Transparency ──
+const PRICE_TYPE_OPTIONS = ["All-Inclusive", "Base Price"];
+const MAINTENANCE_FREQUENCY_OPTIONS = ["Monthly", "Quarterly", "Half-Yearly", "Annually"];
+const BROKERAGE_TYPE_OPTIONS = ["None", "One Month Rent", "Fixed Amount", "Percentage of Rent"];
+const APPRECIATION_OPTIONS = ["Low", "Moderate", "High", "Very High"];
+const BANK_PRESETS = ["SBI", "HDFC", "ICICI", "Axis Bank", "Bank of Baroda", "Punjab National Bank", "Kotak Mahindra", "LIC Housing Finance", "IDFC First", "Yes Bank"];
 const BADGE_COLOR_PRESETS = [
   { label: "Blue", value: "#1E88E5" },
   { label: "Green", value: "#16A34A" },
@@ -79,6 +85,36 @@ const EMPTY_FORM = {
   vastuStatus: "Not Specified",
   furnishing: "",
   condition: "",
+
+  // ── Section 2B: Price & Financial Transparency ──
+  priceNegotiable: false,
+  priceType: "All-Inclusive",
+  costBase: "",
+  costFloorRise: "",
+  costParking: "",
+  costClubhouse: "",
+  costPlc: "",
+  costGst: "",
+  costRegistration: "",
+  costMaintenanceDeposit: "",
+  costOther: "",
+  costOtherLabel: "",
+  maintenanceAmount: "",
+  maintenanceFrequency: "Monthly",
+  securityDeposit: "",
+  brokerageType: "None",
+  brokerageAmount: "",
+  lockInPeriod: "",
+  noticePeriod: "",
+  leaseTerms: "",
+  emiInterestRate: 8.5,
+  emiTenureYears: 20,
+  emiDownPaymentPercent: 20,
+  approvedBanks: [],
+  loanEligibilityNotes: "",
+  estimatedMonthlyRent: "",
+  appreciationPotential: "",
+  recommendedHoldingPeriod: "",
 };
 
 // ── Small building blocks ──────────────────────────────────────────────────────
@@ -158,6 +194,29 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       vastuStatus: nullToEmpty(editingListing.vastuStatus) || EMPTY_FORM.vastuStatus,
       furnishing: nullToEmpty(editingListing.furnishing),
       condition: nullToEmpty(editingListing.condition),
+      costBase: nullToEmpty(editingListing.costBase),
+      costFloorRise: nullToEmpty(editingListing.costFloorRise),
+      costParking: nullToEmpty(editingListing.costParking),
+      costClubhouse: nullToEmpty(editingListing.costClubhouse),
+      costPlc: nullToEmpty(editingListing.costPlc),
+      costGst: nullToEmpty(editingListing.costGst),
+      costRegistration: nullToEmpty(editingListing.costRegistration),
+      costMaintenanceDeposit: nullToEmpty(editingListing.costMaintenanceDeposit),
+      costOther: nullToEmpty(editingListing.costOther),
+      costOtherLabel: nullToEmpty(editingListing.costOtherLabel),
+      maintenanceAmount: nullToEmpty(editingListing.maintenanceAmount),
+      securityDeposit: nullToEmpty(editingListing.securityDeposit),
+      brokerageAmount: nullToEmpty(editingListing.brokerageAmount),
+      lockInPeriod: nullToEmpty(editingListing.lockInPeriod),
+      noticePeriod: nullToEmpty(editingListing.noticePeriod),
+      leaseTerms: nullToEmpty(editingListing.leaseTerms),
+      emiInterestRate: editingListing.emiInterestRate ?? EMPTY_FORM.emiInterestRate,
+      emiTenureYears: editingListing.emiTenureYears ?? EMPTY_FORM.emiTenureYears,
+      emiDownPaymentPercent: editingListing.emiDownPaymentPercent ?? EMPTY_FORM.emiDownPaymentPercent,
+      approvedBanks: Array.isArray(editingListing.approvedBanks) ? editingListing.approvedBanks : [],
+      loanEligibilityNotes: nullToEmpty(editingListing.loanEligibilityNotes),
+      estimatedMonthlyRent: nullToEmpty(editingListing.estimatedMonthlyRent),
+      recommendedHoldingPeriod: nullToEmpty(editingListing.recommendedHoldingPeriod),
     };
   });
   const [uploading, setUploading] = useState(false);
@@ -233,6 +292,50 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     const n = Number(raw) || 0;
     if (form.transactionType === "Rent") return `₹${n.toLocaleString("en-IN")}/month`;
     return n >= 10000000 ? `₹${(n / 10000000).toFixed(2)} Cr` : `₹${(n / 100000).toFixed(0)} Lac`;
+  }
+
+  // ── Section 2B live previews ── computed straight from current form state,
+  // so admins see the effect of what they type without needing to save first.
+  // (The real price_per_sqft / rental_yield_percent are DB-generated columns —
+  // these are just client-side estimates shown ahead of that.)
+  function estimatedAreaSqft() {
+    return Number(form.builtUpArea) || Number(form.superBuiltUpArea) || Number(form.carpetArea) || Number(form.plotArea) || null;
+  }
+
+  function pricePerSqftPreview() {
+    const area = estimatedAreaSqft();
+    const price = Number(form.priceRaw) || 0;
+    if (!area || !price) return null;
+    return Math.round(price / area);
+  }
+
+  function emiPreview() {
+    const price = Number(form.priceRaw) || 0;
+    const rate = Number(form.emiInterestRate) || 0;
+    const years = Number(form.emiTenureYears) || 0;
+    const downPct = Number(form.emiDownPaymentPercent) || 0;
+    if (!price || !years) return null;
+    const principal = price * (1 - downPct / 100);
+    const monthlyRate = rate / 100 / 12;
+    const months = years * 12;
+    if (monthlyRate === 0) return Math.round(principal / months);
+    const factor = Math.pow(1 + monthlyRate, months);
+    const emi = (principal * monthlyRate * factor) / (factor - 1);
+    return isFinite(emi) && emi > 0 ? Math.round(emi) : null;
+  }
+
+  function downPaymentPreview() {
+    const price = Number(form.priceRaw) || 0;
+    const downPct = Number(form.emiDownPaymentPercent) || 0;
+    if (!price) return null;
+    return Math.round(price * (downPct / 100));
+  }
+
+  function rentalYieldPreview() {
+    const price = Number(form.priceRaw) || 0;
+    const rent = Number(form.estimatedMonthlyRent) || 0;
+    if (!price || !rent) return null;
+    return ((rent * 12 / price) * 100).toFixed(2);
   }
 
   async function handleSave(e) {
@@ -485,6 +588,150 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             <Field label="Age of Property">
               <TextInput value={form.age} onChange={(e) => set("age", e.target.value)} placeholder="e.g. 2 years / New" />
             </Field>
+          </div>
+        </div>
+
+        {/* ── Price & Financial Transparency (Section 2B) ── */}
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Price &amp; Financial Transparency</h2>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>Cost breakup, maintenance, EMI assumptions, and investment indicators.</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6">
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+              <input type="checkbox" checked={form.priceNegotiable} onChange={(e) => set("priceNegotiable", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+              Price is negotiable
+            </label>
+            <div className="flex-1 min-w-[180px]">
+              <Field label="Price Type">
+                <Select value={form.priceType} onChange={(e) => set("priceType", e.target.value)}>
+                  {PRICE_TYPE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </Select>
+              </Field>
+            </div>
+          </div>
+
+          {pricePerSqftPreview() && (
+            <p className="text-xs" style={{ color: "#6B7280" }}>
+              Price per sqft: <span className="font-bold" style={{ color: "#1E88E5" }}>₹{pricePerSqftPreview().toLocaleString("en-IN")}/sqft</span>
+              {" "}— auto-computed from Price and Area, saved automatically.
+            </p>
+          )}
+
+          <Field label="Cost Breakup" hint="All optional — fill in whichever line items apply to this property.">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <TextInput type="number" min="0" value={form.costBase} onChange={(e) => set("costBase", e.target.value)} placeholder="Base Cost" />
+              <TextInput type="number" min="0" value={form.costFloorRise} onChange={(e) => set("costFloorRise", e.target.value)} placeholder="Floor Rise" />
+              <TextInput type="number" min="0" value={form.costParking} onChange={(e) => set("costParking", e.target.value)} placeholder="Parking" />
+              <TextInput type="number" min="0" value={form.costClubhouse} onChange={(e) => set("costClubhouse", e.target.value)} placeholder="Clubhouse" />
+              <TextInput type="number" min="0" value={form.costPlc} onChange={(e) => set("costPlc", e.target.value)} placeholder="PLC" />
+              <TextInput type="number" min="0" value={form.costGst} onChange={(e) => set("costGst", e.target.value)} placeholder="GST" />
+              <TextInput type="number" min="0" value={form.costRegistration} onChange={(e) => set("costRegistration", e.target.value)} placeholder="Registration" />
+              <TextInput type="number" min="0" value={form.costMaintenanceDeposit} onChange={(e) => set("costMaintenanceDeposit", e.target.value)} placeholder="Maintenance Deposit" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <TextInput type="number" min="0" value={form.costOther} onChange={(e) => set("costOther", e.target.value)} placeholder="Other Charges" />
+              <TextInput value={form.costOtherLabel} onChange={(e) => set("costOtherLabel", e.target.value)} placeholder="What does 'Other' cover?" />
+            </div>
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Monthly Maintenance">
+              <TextInput type="number" min="0" value={form.maintenanceAmount} onChange={(e) => set("maintenanceAmount", e.target.value)} placeholder="e.g. 3500" />
+            </Field>
+            <Field label="Maintenance Frequency">
+              <Select value={form.maintenanceFrequency} onChange={(e) => set("maintenanceFrequency", e.target.value)}>
+                {MAINTENANCE_FREQUENCY_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </Select>
+            </Field>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: "#6B7280" }}>Rental Terms <span className="normal-case font-normal">(for Rent / Lease listings)</span></h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <Field label="Security Deposit">
+                <TextInput type="number" min="0" value={form.securityDeposit} onChange={(e) => set("securityDeposit", e.target.value)} placeholder="e.g. 100000" />
+              </Field>
+              <Field label="Brokerage">
+                <Select value={form.brokerageType} onChange={(e) => set("brokerageType", e.target.value)}>
+                  {BROKERAGE_TYPE_OPTIONS.map((b) => <option key={b} value={b}>{b}</option>)}
+                </Select>
+              </Field>
+              {(form.brokerageType === "Fixed Amount" || form.brokerageType === "Percentage of Rent") && (
+                <Field label={form.brokerageType === "Percentage of Rent" ? "Brokerage (%)" : "Brokerage (₹)"}>
+                  <TextInput type="number" min="0" value={form.brokerageAmount} onChange={(e) => set("brokerageAmount", e.target.value)} />
+                </Field>
+              )}
+              <Field label="Lock-in Period">
+                <TextInput value={form.lockInPeriod} onChange={(e) => set("lockInPeriod", e.target.value)} placeholder="e.g. 11 months" />
+              </Field>
+              <Field label="Notice Period">
+                <TextInput value={form.noticePeriod} onChange={(e) => set("noticePeriod", e.target.value)} placeholder="e.g. 1 month" />
+              </Field>
+            </div>
+            <div className="mt-4">
+              <Field label="Other Lease Terms" hint="Escalation clause, renewal terms, restrictions, etc.">
+                <textarea value={form.leaseTerms} onChange={(e) => set("leaseTerms", e.target.value)} rows={2}
+                  className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none" style={inputStyle} />
+              </Field>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: "#6B7280" }}>EMI Assumptions <span className="normal-case font-normal">(shown on the property's public page)</span></h3>
+            <div className="grid grid-cols-3 gap-4">
+              <Field label="Interest Rate (% p.a.)">
+                <TextInput type="number" min="0" step="0.1" value={form.emiInterestRate} onChange={(e) => set("emiInterestRate", e.target.value)} />
+              </Field>
+              <Field label="Tenure (years)">
+                <TextInput type="number" min="1" value={form.emiTenureYears} onChange={(e) => set("emiTenureYears", e.target.value)} />
+              </Field>
+              <Field label="Down Payment (%)">
+                <TextInput type="number" min="0" max="100" value={form.emiDownPaymentPercent} onChange={(e) => set("emiDownPaymentPercent", e.target.value)} />
+              </Field>
+            </div>
+            {(emiPreview() || downPaymentPreview()) && (
+              <p className="text-xs mt-2" style={{ color: "#6B7280" }}>
+                {downPaymentPreview() && <>Down payment ≈ <span className="font-bold" style={{ color: "#1E88E5" }}>₹{downPaymentPreview().toLocaleString("en-IN")}</span>. </>}
+                {emiPreview() && <>Estimated EMI ≈ <span className="font-bold" style={{ color: "#1E88E5" }}>₹{emiPreview().toLocaleString("en-IN")}/month</span>.</>}
+              </p>
+            )}
+          </div>
+
+          <Field label="Loan Eligibility — Approved Banks" hint="Select banks that have pre-approved this project, if known.">
+            <div className="flex flex-wrap gap-2">
+              {BANK_PRESETS.map((b) => (
+                <Chip key={b} label={b} active={form.approvedBanks.includes(b)} onClick={() => toggleInArray("approvedBanks", b)} />
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Loan Eligibility Notes">
+            <TextInput value={form.loanEligibilityNotes} onChange={(e) => set("loanEligibilityNotes", e.target.value)} placeholder="e.g. Pre-approved by SBI up to 80% LTV" />
+          </Field>
+
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: "#6B7280" }}>Investment Indicators</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Field label="Estimated Monthly Rent" hint="Used to compute rental yield below.">
+                <TextInput type="number" min="0" value={form.estimatedMonthlyRent} onChange={(e) => set("estimatedMonthlyRent", e.target.value)} placeholder="e.g. 25000" />
+              </Field>
+              <Field label="Appreciation Potential">
+                <Select value={form.appreciationPotential} onChange={(e) => set("appreciationPotential", e.target.value)}>
+                  <option value="">— N/A —</option>
+                  {APPRECIATION_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+                </Select>
+              </Field>
+              <Field label="Recommended Holding Period">
+                <TextInput value={form.recommendedHoldingPeriod} onChange={(e) => set("recommendedHoldingPeriod", e.target.value)} placeholder="e.g. 5-7 years" />
+              </Field>
+            </div>
+            {rentalYieldPreview() && (
+              <p className="text-xs mt-2" style={{ color: "#6B7280" }}>
+                Estimated rental yield: <span className="font-bold" style={{ color: "#1E88E5" }}>{rentalYieldPreview()}%</span> per year.
+              </p>
+            )}
           </div>
         </div>
 
