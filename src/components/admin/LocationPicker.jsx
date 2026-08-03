@@ -43,6 +43,22 @@ async function geocode(query) {
   return res.json();
 }
 
+// Best-effort reverse geocode of a dropped/dragged pin, so locality/city/
+// pincode can be pre-filled instead of typed by hand — the admin/owner can
+// still edit whatever it suggests. Also uses Nominatim (free, no API key);
+// callers should treat failures as non-fatal (catch and ignore).
+export async function reverseGeocode(lat, lng) {
+  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`);
+  if (!res.ok) throw new Error("Reverse geocode failed");
+  const data = await res.json();
+  const a = data.address || {};
+  return {
+    locality: a.suburb || a.neighbourhood || a.residential || a.locality || null,
+    city: a.city || a.town || a.village || a.county || null,
+    pincode: a.postcode || null,
+  };
+}
+
 const inputStyle = { background: "#FFFFFF", border: "1px solid #E2E8F0", color: "#1F2937" };
 
 export default function LocationPicker({ latitude, longitude, onChange }) {

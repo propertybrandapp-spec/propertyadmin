@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "./AdminLayout";
-import { createListing, updateListing, deleteListing } from "../../lib/listings";
+import { createListing, updateListing, deleteListing, LANDMARK_CATEGORIES } from "../../lib/listings";
 import { uploadToR2, validateImageFile } from "../../lib/r2Upload";
 import { fetchActiveListingFieldOptionsGrouped } from "../../lib/listingOptions";
-import LocationPicker from "./LocationPicker";
+import LocationPicker, { reverseGeocode } from "./LocationPicker";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 // Fallback defaults — used until the dynamic options load (or if "Site
@@ -28,6 +28,9 @@ const MAINTENANCE_FREQUENCY_OPTIONS = ["Monthly", "Quarterly", "Half-Yearly", "A
 const BROKERAGE_TYPE_OPTIONS = ["None", "One Month Rent", "Fixed Amount", "Percentage of Rent"];
 const APPRECIATION_OPTIONS = ["Low", "Moderate", "High", "Very High"];
 const BANK_PRESETS = ["SBI", "HDFC", "ICICI", "Axis Bank", "Bank of Baroda", "Punjab National Bank", "Kotak Mahindra", "LIC Housing Finance", "IDFC First", "Yes Bank"];
+// ── New in Section 2C: Location & Connectivity ──
+const ADDRESS_VISIBILITY_OPTIONS = ["Exact Address", "Approximate Location", "Locality Only"];
+const NEIGHBOURHOOD_PROFILE_OPTIONS = ["Residential", "Commercial", "Mixed-Use", "Emerging Growth Corridor"];
 const BADGE_COLOR_PRESETS = [
   { label: "Blue", value: "#1E88E5" },
   { label: "Green", value: "#16A34A" },
@@ -115,6 +118,18 @@ const EMPTY_FORM = {
   estimatedMonthlyRent: "",
   appreciationPotential: "",
   recommendedHoldingPeriod: "",
+
+  // ── Section 2C: Location & Connectivity ──
+  locality: "",
+  landmark: "",
+  city: "",
+  pincode: "",
+  addressVisibility: "Exact Address",
+  nearbyLandmarks: [],
+  roadWidth: "",
+  approachRoadDetails: "",
+  publicTransportNotes: "",
+  neighbourhoodProfile: "",
 };
 
 // ── Small building blocks ──────────────────────────────────────────────────────
@@ -217,6 +232,18 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       loanEligibilityNotes: nullToEmpty(editingListing.loanEligibilityNotes),
       estimatedMonthlyRent: nullToEmpty(editingListing.estimatedMonthlyRent),
       recommendedHoldingPeriod: nullToEmpty(editingListing.recommendedHoldingPeriod),
+      locality: nullToEmpty(editingListing.locality),
+      landmark: nullToEmpty(editingListing.landmark),
+      city: nullToEmpty(editingListing.city),
+      pincode: nullToEmpty(editingListing.pincode),
+      addressVisibility: nullToEmpty(editingListing.addressVisibility) || EMPTY_FORM.addressVisibility,
+      nearbyLandmarks: Array.isArray(editingListing.nearbyLandmarks)
+        ? editingListing.nearbyLandmarks.map((l, i) => ({ ...l, _key: `existing-${i}` }))
+        : [],
+      roadWidth: nullToEmpty(editingListing.roadWidth),
+      approachRoadDetails: nullToEmpty(editingListing.approachRoadDetails),
+      publicTransportNotes: nullToEmpty(editingListing.publicTransportNotes),
+      neighbourhoodProfile: nullToEmpty(editingListing.neighbourhoodProfile),
     };
   });
   const [uploading, setUploading] = useState(false);
@@ -258,6 +285,42 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       ...f,
       [key]: f[key].includes(value) ? f[key].filter((x) => x !== value) : [...f[key], value],
     }));
+  }
+
+  // ── Section 2C: nearby landmarks (repeatable rows) ──
+  function addLandmark() {
+    setForm((f) => ({
+      ...f,
+      nearbyLandmarks: [...f.nearbyLandmarks, { _key: `new-${Date.now()}-${f.nearbyLandmarks.length}`, category: "School", name: "", distance: "", travelTime: "" }],
+    }));
+  }
+  function updateLandmark(key, field, value) {
+    setForm((f) => ({
+      ...f,
+      nearbyLandmarks: f.nearbyLandmarks.map((l) => (l._key === key ? { ...l, [field]: value } : l)),
+    }));
+  }
+  function removeLandmark(key) {
+    setForm((f) => ({ ...f, nearbyLandmarks: f.nearbyLandmarks.filter((l) => l._key !== key) }));
+  }
+
+  // Best-effort: when a pin is (re)dropped, suggest locality/city/pincode from
+  // it — but only fill in fields the admin hasn't already typed something
+  // into, and never blocks/breaks pin-picking if the lookup fails.
+  async function handlePinChange({ latitude, longitude }) {
+    setForm((f) => ({ ...f, latitude, longitude }));
+    if (latitude == null || longitude == null) return;
+    try {
+      const suggestion = await reverseGeocode(latitude, longitude);
+      setForm((f) => ({
+        ...f,
+        locality: f.locality || suggestion.locality || f.locality,
+        city: f.city || suggestion.city || f.city,
+        pincode: f.pincode || suggestion.pincode || f.pincode,
+      }));
+    } catch {
+      // silent — reverse geocoding is a convenience, not a requirement
+    }
   }
 
   async function handleFilesSelected(e) {
@@ -435,7 +498,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             <LocationPicker
               latitude={form.latitude}
               longitude={form.longitude}
-              onChange={({ latitude, longitude }) => setForm((f) => ({ ...f, latitude, longitude }))}
+              onChange={handlePinChange}
             />
           </Field>
 
@@ -733,6 +796,75 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </p>
             )}
           </div>
+        </div>
+
+        {/* ── Location & Connectivity (Section 2C) ── */}
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Location &amp; Connectivity</h2>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>Auto-suggested from the map pin above where possible — feel free to edit.</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Field label="Locality">
+              <TextInput value={form.locality} onChange={(e) => set("locality", e.target.value)} placeholder="e.g. Patia" />
+            </Field>
+            <Field label="Landmark">
+              <TextInput value={form.landmark} onChange={(e) => set("landmark", e.target.value)} placeholder="e.g. Near KIIT Square" />
+            </Field>
+            <Field label="City">
+              <TextInput value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="e.g. Bhubaneswar" />
+            </Field>
+            <Field label="Pincode">
+              <TextInput value={form.pincode} onChange={(e) => set("pincode", e.target.value)} placeholder="e.g. 751024" />
+            </Field>
+          </div>
+
+          <Field label="Address Visibility" hint="Controls how precisely the map pin/address shows on the public listing.">
+            <Select value={form.addressVisibility} onChange={(e) => set("addressVisibility", e.target.value)}>
+              {ADDRESS_VISIBILITY_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+            </Select>
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Road Width">
+              <TextInput value={form.roadWidth} onChange={(e) => set("roadWidth", e.target.value)} placeholder="e.g. 40 ft wide" />
+            </Field>
+            <Field label="Approach Road Details">
+              <TextInput value={form.approachRoadDetails} onChange={(e) => set("approachRoadDetails", e.target.value)} placeholder="e.g. Tar road, well maintained" />
+            </Field>
+            <Field label="Neighbourhood Profile">
+              <Select value={form.neighbourhoodProfile} onChange={(e) => set("neighbourhoodProfile", e.target.value)}>
+                <option value="">— N/A —</option>
+                {NEIGHBOURHOOD_PROFILE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+              </Select>
+            </Field>
+          </div>
+
+          <Field label="Public Transport Availability">
+            <TextInput value={form.publicTransportNotes} onChange={(e) => set("publicTransportNotes", e.target.value)} placeholder="e.g. Bus routes 12, 45 nearby; auto stand 100m" />
+          </Field>
+
+          <Field label="Nearby Landmarks & Key Destinations" hint="Powers the 'What's Nearby' section (with layer filters) on the public page.">
+            <div className="space-y-2.5">
+              {form.nearbyLandmarks.map((l) => (
+                <div key={l._key} className="grid grid-cols-[1fr_1.4fr_0.8fr_0.8fr_auto] gap-2 items-center">
+                  <Select value={l.category} onChange={(e) => updateLandmark(l._key, "category", e.target.value)}>
+                    {LANDMARK_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </Select>
+                  <TextInput value={l.name} onChange={(e) => updateLandmark(l._key, "name", e.target.value)} placeholder="Name (e.g. DAV Public School)" />
+                  <TextInput value={l.distance} onChange={(e) => updateLandmark(l._key, "distance", e.target.value)} placeholder="Distance (1.2 km)" />
+                  <TextInput value={l.travelTime} onChange={(e) => updateLandmark(l._key, "travelTime", e.target.value)} placeholder="Time (5 min)" />
+                  <button type="button" onClick={() => removeLandmark(l._key)} className="text-xs font-bold px-2 py-2.5 rounded-lg hover:opacity-80" style={{ color: "#DC2626" }}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={addLandmark} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+                + Add Nearby Landmark
+              </button>
+            </div>
+          </Field>
         </div>
 
         {/* ── Photos ── */}

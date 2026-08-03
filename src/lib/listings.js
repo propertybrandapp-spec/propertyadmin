@@ -4,6 +4,22 @@ import { deleteFromR2 } from "./r2Upload";
 // Shown when a listing has no photos yet (e.g. just created, images still uploading)
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=380&fit=crop";
 
+// ── Section 2C: nearby-landmark categories ─────────────────────────────────
+// The 8 specific categories admins pick from when adding a nearby landmark...
+export const LANDMARK_CATEGORIES = ["School", "Hospital", "Market", "Railway Station", "Airport", "Metro/Bus Stop", "Business Hub", "Other"];
+// ...grouped into the 5 broader "map layers" the property page filters by.
+export const LANDMARK_LAYERS = ["Schools", "Hospitals", "Transit", "Daily Needs", "Employment Hubs"];
+export const LANDMARK_LAYER_GROUPS = {
+  "School": "Schools",
+  "Hospital": "Hospitals",
+  "Railway Station": "Transit",
+  "Airport": "Transit",
+  "Metro/Bus Stop": "Transit",
+  "Market": "Daily Needs",
+  "Other": "Daily Needs",
+  "Business Hub": "Employment Hubs",
+};
+
 // ── Listings Data Layer ───────────────────────────────────────────────────────
 // Every component that reads or writes property listings (SearchResults,
 // PropertyDetail, the Admin listings screen + form) goes through this file
@@ -112,6 +128,18 @@ export function normalizeListing(row) {
     rentalYieldPercent: row.rental_yield_percent != null ? Number(row.rental_yield_percent) : null,  // DB-generated
     appreciationPotential: row.appreciation_potential || null,
     recommendedHoldingPeriod: row.recommended_holding_period || null,
+
+    // ── Section 2C: Location & Connectivity ──
+    locality: row.locality || null,
+    landmark: row.landmark || null,
+    city: row.city || null,
+    pincode: row.pincode || null,
+    addressVisibility: row.address_visibility || "Exact Address",
+    nearbyLandmarks: Array.isArray(row.nearby_landmarks) ? row.nearby_landmarks : [],
+    roadWidth: row.road_width || null,
+    approachRoadDetails: row.approach_road_details || null,
+    publicTransportNotes: row.public_transport_notes || null,
+    neighbourhoodProfile: row.neighbourhood_profile || null,
 
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     videoUrls: row.video_urls || [],
@@ -257,6 +285,23 @@ export function denormalizeListing(f) {
     estimated_monthly_rent: numOrNull(f.estimatedMonthlyRent),
     appreciation_potential: f.appreciationPotential || null,
     recommended_holding_period: f.recommendedHoldingPeriod || null,
+
+    // ── Section 2C: Location & Connectivity ──
+    locality: f.locality || null,
+    landmark: f.landmark || null,
+    city: f.city || null,
+    pincode: f.pincode || null,
+    address_visibility: f.addressVisibility || "Exact Address",
+    // Strip the client-only `_key` (React list key) before saving.
+    nearby_landmarks: Array.isArray(f.nearbyLandmarks)
+      ? f.nearbyLandmarks
+          .filter((l) => l.name || l.distance || l.travelTime)
+          .map(({ category, name, distance, travelTime }) => ({ category, name, distance, travelTime }))
+      : [],
+    road_width: f.roadWidth || null,
+    approach_road_details: f.approachRoadDetails || null,
+    public_transport_notes: f.publicTransportNotes || null,
+    neighbourhood_profile: f.neighbourhoodProfile || null,
 
     updated_at: new Date().toISOString(),
   };
