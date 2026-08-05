@@ -77,6 +77,22 @@ export function validateImageFile(file, maxSizeMB = 5) {
   return null;
 }
 
+// Same idea, for project documents (brochure, floor plans, master plan,
+// specification sheet) — these upload to the "documents" R2 folder, which
+// the Worker allows PDFs into (see cloudflare-worker/worker.js). Requires
+// redeploying the Worker (`cd cloudflare-worker && wrangler deploy`) if it
+// was deployed before this was added.
+export function validateDocumentFile(file, maxSizeMB = 15) {
+  const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return "Please upload a PDF, JPEG, PNG, or WebP file.";
+  }
+  if (file.size > maxSizeMB * 1024 * 1024) {
+    return `File must be smaller than ${maxSizeMB}MB.`;
+  }
+  return null;
+}
+
 /**
  * Deletes one or more previously-uploaded files from R2. Pass the full public
  * URLs you got back from uploadToR2() (e.g. a listing's `images` array) — the

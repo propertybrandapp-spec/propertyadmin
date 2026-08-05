@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "./AdminLayout";
 import { createListing, updateListing, deleteListing, LANDMARK_CATEGORIES } from "../../lib/listings";
-import { uploadToR2, validateImageFile } from "../../lib/r2Upload";
+import { fetchDevelopers, createDeveloper, updateDeveloper, fetchProjects, createProject, updateProject } from "../../lib/developers";
+import { uploadToR2, validateImageFile, validateDocumentFile } from "../../lib/r2Upload";
 import { fetchActiveListingFieldOptionsGrouped } from "../../lib/listingOptions";
 import LocationPicker, { reverseGeocode } from "./LocationPicker";
 
@@ -31,6 +32,21 @@ const BANK_PRESETS = ["SBI", "HDFC", "ICICI", "Axis Bank", "Bank of Baroda", "Pu
 // ── New in Section 2C: Location & Connectivity ──
 const ADDRESS_VISIBILITY_OPTIONS = ["Exact Address", "Approximate Location", "Locality Only"];
 const NEIGHBOURHOOD_PROFILE_OPTIONS = ["Residential", "Commercial", "Mixed-Use", "Emerging Growth Corridor"];
+// ── New in Section 2D: Project & Developer Information ──
+const CONSTRUCTION_STAGE_OPTIONS = ["Pre-Launch", "Foundation", "Under Construction", "Structure Complete", "Finishing Stage", "Ready to Move", "Completed"];
+const DOCUMENT_TYPE_OPTIONS = ["Brochure", "Floor Plan", "Master Plan", "Specification Sheet", "Other"];
+const APPROVAL_STATUS_OPTIONS = ["Approved", "Pending", "In Progress", "Not Required"];
+const INDIAN_STATES = ["Andhra Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi NCR", "Goa", "Gujarat", "Haryana", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Odisha", "Punjab", "Rajasthan", "Tamil Nadu", "Telangana", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Other"];
+// ── New in Section 2E: Legal & Verification Information ──
+const RERA_STATUS_OPTIONS = ["Registered", "Not Applicable", "Pending Verification"];
+const OWNERSHIP_TYPE_OPTIONS = ["Freehold", "Leasehold", "Cooperative", "Society", "Authority Lease", "Other"];
+const TITLE_STATUS_OPTIONS = ["Clear Title", "Disputed", "Under Verification", "Not Verified"];
+const DOC_VERIFICATION_STATUS_OPTIONS = ["Verified", "Pending", "Not Verified"];
+const ENCUMBRANCE_STATUS_OPTIONS = ["No Encumbrance", "Existing Loan/Mortgage", "Under Litigation", "Not Verified"];
+const CERTIFICATE_STATUS_OPTIONS = ["Available", "Applied / In Process", "Not Available", "Not Applicable"];
+const BUILDING_PLAN_STATUS_OPTIONS = ["Approved", "Pending Approval", "Not Available"];
+const PROPERTY_TAX_STATUS_OPTIONS = ["Paid Up to Date", "Dues Pending", "Not Verified"];
+const UTILITY_STATUS_OPTIONS = ["Connected", "Partially Connected", "Not Connected", "Not Verified"];
 const BADGE_COLOR_PRESETS = [
   { label: "Blue", value: "#1E88E5" },
   { label: "Green", value: "#16A34A" },
@@ -130,6 +146,60 @@ const EMPTY_FORM = {
   approachRoadDetails: "",
   publicTransportNotes: "",
   neighbourhoodProfile: "",
+
+  // ── Section 2D: Project & Developer Information ──
+  // "none" = plain text only, "existing" = linked to a picked profile,
+  // "new" = creating a fresh profile on save.
+  developerMode: "none",
+  developerId: null,
+  developerName: "",
+  developerVerified: false,
+  developerExperienceYears: "",
+  developerCompletedProjectsCount: "",
+  developerCurrentProjectsCount: "",
+  developerDescription: "",
+
+  projectMode: "none",
+  projectId: null,
+  // projectName already declared above (Section 2A) — reused as this
+  // project profile's name too, whether linked or freshly created.
+  projectLandAreaAcres: "",
+  projectTotalTowers: "",
+  projectTotalFloors: "",
+  projectTotalUnits: "",
+  projectHomesPerFloor: "",
+  projectOpenSpacePercent: "",
+  projectConstructionStage: "",
+  projectConstructionStageVerifiedAt: null,
+  projectExpectedPossessionDate: "",
+  projectHandoverTimeline: "",
+  projectReraNumber: "",
+  projectReraState: "",
+  projectReraProjectName: "",
+  projectReraVerificationLink: "",
+  projectApprovals: [],
+  projectDocuments: [],
+  projectConstructionQuality: "",
+  projectStructureType: "",
+  projectKeyMaterials: "",
+
+  // ── Section 2E: Legal & Verification Information ──
+  reraStatus: "Pending Verification",
+  ownershipType: "",
+  titleStatus: "",
+  documentVerificationStatus: "Pending",
+  encumbranceStatus: "",
+  encumbranceNotes: "",
+  occupancyCertificateStatus: "",
+  completionCertificateStatus: "",
+  possessionCertificateStatus: "",
+  buildingPlanStatus: "",
+  propertyTaxStatus: "",
+  utilityConnectionStatus: "",
+  utilityConnectionNotes: "",
+  posterVerified: false,
+  verificationDate: "",
+  verificationSource: "",
 };
 
 // ── Small building blocks ──────────────────────────────────────────────────────
@@ -244,8 +314,61 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       approachRoadDetails: nullToEmpty(editingListing.approachRoadDetails),
       publicTransportNotes: nullToEmpty(editingListing.publicTransportNotes),
       neighbourhoodProfile: nullToEmpty(editingListing.neighbourhoodProfile),
+      developerMode: editingListing.developerId ? "existing" : "none",
+      developerId: editingListing.developerId || null,
+      developerName: nullToEmpty(editingListing.developerName || editingListing.developer?.name),
+      developerVerified: !!editingListing.developer?.verified,
+      developerExperienceYears: nullToEmpty(editingListing.developer?.experienceYears),
+      developerCompletedProjectsCount: nullToEmpty(editingListing.developer?.completedProjectsCount),
+      developerCurrentProjectsCount: nullToEmpty(editingListing.developer?.currentProjectsCount),
+      developerDescription: nullToEmpty(editingListing.developer?.description),
+      projectMode: editingListing.projectId ? "existing" : "none",
+      projectId: editingListing.projectId || null,
+      projectLandAreaAcres: nullToEmpty(editingListing.project?.landAreaAcres),
+      projectTotalTowers: nullToEmpty(editingListing.project?.totalTowers),
+      projectTotalFloors: nullToEmpty(editingListing.project?.totalFloors),
+      projectTotalUnits: nullToEmpty(editingListing.project?.totalUnits),
+      projectHomesPerFloor: nullToEmpty(editingListing.project?.homesPerFloor),
+      projectOpenSpacePercent: nullToEmpty(editingListing.project?.openSpacePercent),
+      projectConstructionStage: nullToEmpty(editingListing.project?.constructionStage),
+      projectConstructionStageVerifiedAt: editingListing.project?.constructionStageVerifiedAt || null,
+      projectExpectedPossessionDate: nullToEmpty(editingListing.project?.expectedPossessionDate),
+      projectHandoverTimeline: nullToEmpty(editingListing.project?.handoverTimeline),
+      projectReraNumber: nullToEmpty(editingListing.project?.reraNumber),
+      projectReraState: nullToEmpty(editingListing.project?.reraState),
+      projectReraProjectName: nullToEmpty(editingListing.project?.reraProjectName),
+      projectReraVerificationLink: nullToEmpty(editingListing.project?.reraVerificationLink),
+      projectApprovals: Array.isArray(editingListing.project?.approvals)
+        ? editingListing.project.approvals.map((a, i) => ({ ...a, _key: `existing-${i}` }))
+        : [],
+      projectDocuments: Array.isArray(editingListing.project?.documents)
+        ? editingListing.project.documents.map((d, i) => ({ ...d, _key: `existing-${i}` }))
+        : [],
+      projectConstructionQuality: nullToEmpty(editingListing.project?.constructionQuality),
+      projectStructureType: nullToEmpty(editingListing.project?.structureType),
+      projectKeyMaterials: nullToEmpty(editingListing.project?.keyMaterials),
+      reraStatus: nullToEmpty(editingListing.reraStatus) || EMPTY_FORM.reraStatus,
+      ownershipType: nullToEmpty(editingListing.ownershipType),
+      titleStatus: nullToEmpty(editingListing.titleStatus),
+      documentVerificationStatus: nullToEmpty(editingListing.documentVerificationStatus) || EMPTY_FORM.documentVerificationStatus,
+      encumbranceStatus: nullToEmpty(editingListing.encumbranceStatus),
+      encumbranceNotes: nullToEmpty(editingListing.encumbranceNotes),
+      occupancyCertificateStatus: nullToEmpty(editingListing.occupancyCertificateStatus),
+      completionCertificateStatus: nullToEmpty(editingListing.completionCertificateStatus),
+      possessionCertificateStatus: nullToEmpty(editingListing.possessionCertificateStatus),
+      buildingPlanStatus: nullToEmpty(editingListing.buildingPlanStatus),
+      propertyTaxStatus: nullToEmpty(editingListing.propertyTaxStatus),
+      utilityConnectionStatus: nullToEmpty(editingListing.utilityConnectionStatus),
+      utilityConnectionNotes: nullToEmpty(editingListing.utilityConnectionNotes),
+      posterVerified: !!editingListing.posterVerified,
+      verificationDate: nullToEmpty(editingListing.verificationDate),
+      verificationSource: nullToEmpty(editingListing.verificationSource),
     };
   });
+  const [availableDevelopers, setAvailableDevelopers] = useState([]);
+  const [availableProjects, setAvailableProjects] = useState([]);
+  const [docUploading, setDocUploading] = useState(false);
+  const [docUploadError, setDocUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -258,6 +381,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   useEffect(() => {
     let cancelled = false;
     fetchActiveListingFieldOptionsGrouped().then(({ data }) => { if (!cancelled) setOptions(data); });
+    fetchDevelopers().then(({ data }) => { if (!cancelled) setAvailableDevelopers(data); });
+    fetchProjects().then(({ data }) => { if (!cancelled) setAvailableProjects(data); });
     return () => { cancelled = true; };
   }, []);
 
@@ -401,6 +526,18 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     return ((rent * 12 / price) * 100).toFixed(2);
   }
 
+  // ── Section 2D live preview ──
+  function unitsPerAcrePreview() {
+    const acres = Number(form.projectLandAreaAcres) || 0;
+    const units = Number(form.projectTotalUnits) || 0;
+    if (!acres || !units) return null;
+    return Math.round((units / acres) * 10) / 10;
+  }
+
+  function markVerifiedToday() {
+    setForm((f) => ({ ...f, posterVerified: true, verificationDate: new Date().toISOString().slice(0, 10) }));
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     setSaveError("");
@@ -411,20 +548,168 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     }
 
     setSaving(true);
-    const payload = { ...form, price: priceLabelFromRaw(form.priceRaw) };
+    try {
+      const developerId = await resolveDeveloperId();
+      const projectId = await resolveProjectId(developerId);
+      const payload = { ...form, price: priceLabelFromRaw(form.priceRaw), developerId, projectId };
 
-    const { error } = isEditing
-      ? await updateListing(editingListing.dbId, payload)
-      : await createListing(payload);
+      const { error } = isEditing
+        ? await updateListing(editingListing.dbId, payload)
+        : await createListing(payload);
 
-    setSaving(false);
-
-    if (error) {
-      setSaveError(error.message || "Something went wrong while saving. Check your Supabase connection.");
-      return;
+      if (error) {
+        setSaveError(error.message || "Something went wrong while saving. Check your Supabase connection.");
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+      onNavigate("listings");
+    } catch (err) {
+      setSaving(false);
+      setSaveError(err?.message || "Something went wrong while saving the developer/project details.");
     }
+  }
 
-    onNavigate("listings");
+  // Creates or updates the developer profile (if any) and returns its id —
+  // called from handleSave, right before the listing itself is saved.
+  async function resolveDeveloperId() {
+    if (form.developerMode === "none" || !form.developerName) return null;
+    const developerData = {
+      name: form.developerName,
+      verified: form.developerVerified,
+      experienceYears: form.developerExperienceYears,
+      completedProjectsCount: form.developerCompletedProjectsCount,
+      currentProjectsCount: form.developerCurrentProjectsCount,
+      description: form.developerDescription,
+    };
+    if (form.developerMode === "existing" && form.developerId) {
+      const { data, error } = await updateDeveloper(form.developerId, developerData);
+      if (error) throw new Error(error.message || "Failed to update developer profile.");
+      return data.id;
+    }
+    const { data, error } = await createDeveloper(developerData);
+    if (error) throw new Error(error.message || "Failed to create developer profile.");
+    return data.id;
+  }
+
+  // Same idea for the project profile — also links it to whichever
+  // developer was just resolved above, if any.
+  async function resolveProjectId(developerId) {
+    if (form.projectMode === "none" || !form.projectName) return null;
+    const projectData = {
+      name: form.projectName,
+      developerId,
+      landAreaAcres: form.projectLandAreaAcres,
+      totalTowers: form.projectTotalTowers,
+      totalFloors: form.projectTotalFloors,
+      totalUnits: form.projectTotalUnits,
+      homesPerFloor: form.projectHomesPerFloor,
+      openSpacePercent: form.projectOpenSpacePercent,
+      constructionStage: form.projectConstructionStage,
+      expectedPossessionDate: form.projectExpectedPossessionDate || null,
+      handoverTimeline: form.projectHandoverTimeline,
+      reraNumber: form.projectReraNumber,
+      reraState: form.projectReraState,
+      reraProjectName: form.projectReraProjectName,
+      reraVerificationLink: form.projectReraVerificationLink,
+      approvals: form.projectApprovals,
+      documents: form.projectDocuments,
+      constructionQuality: form.projectConstructionQuality,
+      structureType: form.projectStructureType,
+      keyMaterials: form.projectKeyMaterials,
+    };
+    if (form.projectMode === "existing" && form.projectId) {
+      const { data, error } = await updateProject(form.projectId, projectData);
+      if (error) throw new Error(error.message || "Failed to update project profile.");
+      return data.id;
+    }
+    const { data, error } = await createProject(projectData);
+    if (error) throw new Error(error.message || "Failed to create project profile.");
+    return data.id;
+  }
+
+  // Populates the form from a picked existing developer/project — lets the
+  // admin still tweak details (e.g. bump completed-projects count) before saving.
+  function selectExistingDeveloper(id) {
+    const d = availableDevelopers.find((x) => x.id === id);
+    if (!d) return;
+    setForm((f) => ({
+      ...f,
+      developerId: d.id,
+      developerName: d.name,
+      developerVerified: d.verified,
+      developerExperienceYears: d.experienceYears ?? "",
+      developerCompletedProjectsCount: d.completedProjectsCount ?? "",
+      developerCurrentProjectsCount: d.currentProjectsCount ?? "",
+      developerDescription: d.description ?? "",
+    }));
+  }
+
+  function selectExistingProject(id) {
+    const p = availableProjects.find((x) => x.id === id);
+    if (!p) return;
+    setForm((f) => ({
+      ...f,
+      projectId: p.id,
+      projectName: p.name,
+      projectLandAreaAcres: p.landAreaAcres ?? "",
+      projectTotalTowers: p.totalTowers ?? "",
+      projectTotalFloors: p.totalFloors ?? "",
+      projectTotalUnits: p.totalUnits ?? "",
+      projectHomesPerFloor: p.homesPerFloor ?? "",
+      projectOpenSpacePercent: p.openSpacePercent ?? "",
+      projectConstructionStage: p.constructionStage ?? "",
+      projectConstructionStageVerifiedAt: p.constructionStageVerifiedAt || null,
+      projectExpectedPossessionDate: p.expectedPossessionDate ?? "",
+      projectHandoverTimeline: p.handoverTimeline ?? "",
+      projectReraNumber: p.reraNumber ?? "",
+      projectReraState: p.reraState ?? "",
+      projectReraProjectName: p.reraProjectName ?? "",
+      projectReraVerificationLink: p.reraVerificationLink ?? "",
+      projectApprovals: (p.approvals || []).map((a, i) => ({ ...a, _key: `sel-${i}` })),
+      projectDocuments: (p.documents || []).map((d, i) => ({ ...d, _key: `sel-${i}` })),
+      projectConstructionQuality: p.constructionQuality ?? "",
+      projectStructureType: p.structureType ?? "",
+      projectKeyMaterials: p.keyMaterials ?? "",
+      // If this project already has a linked developer, adopt it too.
+      ...(p.developerId ? { developerMode: "existing", developerId: p.developerId } : {}),
+    }));
+    if (p.developerId) selectExistingDeveloper(p.developerId);
+  }
+
+  // ── Project approvals & documents (repeatable rows) ──
+  function addApproval() {
+    setForm((f) => ({ ...f, projectApprovals: [...f.projectApprovals, { _key: `new-${Date.now()}`, name: "", status: "Pending", documentUrl: "" }] }));
+  }
+  function updateApproval(key, field, value) {
+    setForm((f) => ({ ...f, projectApprovals: f.projectApprovals.map((a) => (a._key === key ? { ...a, [field]: value } : a)) }));
+  }
+  function removeApproval(key) {
+    setForm((f) => ({ ...f, projectApprovals: f.projectApprovals.filter((a) => a._key !== key) }));
+  }
+
+  function addDocument() {
+    setForm((f) => ({ ...f, projectDocuments: [...f.projectDocuments, { _key: `new-${Date.now()}`, type: "Brochure", label: "", url: "" }] }));
+  }
+  function updateDocument(key, field, value) {
+    setForm((f) => ({ ...f, projectDocuments: f.projectDocuments.map((d) => (d._key === key ? { ...d, [field]: value } : d)) }));
+  }
+  function removeDocument(key) {
+    setForm((f) => ({ ...f, projectDocuments: f.projectDocuments.filter((d) => d._key !== key) }));
+  }
+
+  async function handleDocumentFileSelected(key, e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validationError = validateDocumentFile(file);
+    if (validationError) { setDocUploadError(validationError); return; }
+    setDocUploadError("");
+    setDocUploading(true);
+    const { url, error } = await uploadToR2(file, "documents");
+    setDocUploading(false);
+    if (error) { setDocUploadError(error); return; }
+    updateDocument(key, "url", url);
   }
 
   async function handleDelete() {
@@ -556,10 +841,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </Field>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Project Name" hint="Optional — e.g. builder project name.">
-              <TextInput value={form.projectName} onChange={(e) => set("projectName", e.target.value)} placeholder="e.g. Skyline Residency" />
-            </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Tower / Block">
               <TextInput value={form.towerBlock} onChange={(e) => set("towerBlock", e.target.value)} placeholder="e.g. Tower B" />
             </Field>
@@ -567,6 +849,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               <TextInput value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder="e.g. 1204" />
             </Field>
           </div>
+          <p className="text-xs" style={{ color: "#6B7280" }}>Project name is set in the "Project &amp; Developer Information" section below.</p>
 
           <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
             <input type="checkbox" checked={form.unitNumberPublic} onChange={(e) => set("unitNumberPublic", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
@@ -865,6 +1148,344 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </button>
             </div>
           </Field>
+        </div>
+
+        {/* ── Project & Developer Information (Section 2D) ── */}
+        <div className="rounded-2xl p-6 space-y-6" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Project &amp; Developer Information</h2>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>
+              Shared across every listing in the same project — editing these updates them everywhere, not just this listing.
+            </p>
+          </div>
+
+          {/* ── Developer ── */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "#6B7280" }}>Developer / Owner</h3>
+            <div className="flex flex-wrap gap-2">
+              {[["none", "No Profile"], ["existing", "Select Existing"], ["new", "Add New"]].map(([mode, label]) => (
+                <button key={mode} type="button" onClick={() => set("developerMode", mode)}
+                  className="text-xs font-bold px-3 py-1.5 rounded-full"
+                  style={form.developerMode === mode ? { background: "#1E88E5", color: "#FFFFFF" } : { background: "#F1F5F9", color: "#1F2937" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {form.developerMode === "none" && (
+              <Field label="Developer / Builder Name" hint="Plain text — no verified profile.">
+                <TextInput value={form.developerName} onChange={(e) => set("developerName", e.target.value)} placeholder="e.g. Skyline Builders" />
+              </Field>
+            )}
+
+            {form.developerMode === "existing" && (
+              <Field label="Select Developer">
+                <Select value={form.developerId || ""} onChange={(e) => selectExistingDeveloper(e.target.value)}>
+                  <option value="">— Select —</option>
+                  {availableDevelopers.map((d) => <option key={d.id} value={d.id}>{d.name}{d.verified ? " ✓" : ""}</option>)}
+                </Select>
+              </Field>
+            )}
+
+            {(form.developerMode === "existing" || form.developerMode === "new") && (
+              <>
+                {form.developerMode === "new" && (
+                  <Field label="Developer Name">
+                    <TextInput value={form.developerName} onChange={(e) => set("developerName", e.target.value)} placeholder="e.g. Skyline Builders" />
+                  </Field>
+                )}
+                <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+                  <input type="checkbox" checked={form.developerVerified} onChange={(e) => set("developerVerified", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+                  Verified Developer
+                </label>
+                <div className="grid grid-cols-3 gap-4">
+                  <Field label="Experience (years)">
+                    <TextInput type="number" min="0" value={form.developerExperienceYears} onChange={(e) => set("developerExperienceYears", e.target.value)} placeholder="e.g. 15" />
+                  </Field>
+                  <Field label="Completed Projects">
+                    <TextInput type="number" min="0" value={form.developerCompletedProjectsCount} onChange={(e) => set("developerCompletedProjectsCount", e.target.value)} placeholder="e.g. 22" />
+                  </Field>
+                  <Field label="Current Projects">
+                    <TextInput type="number" min="0" value={form.developerCurrentProjectsCount} onChange={(e) => set("developerCurrentProjectsCount", e.target.value)} placeholder="e.g. 4" />
+                  </Field>
+                </div>
+                <Field label="About the Developer">
+                  <textarea value={form.developerDescription} onChange={(e) => set("developerDescription", e.target.value)} rows={2}
+                    className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none" style={inputStyle} />
+                </Field>
+              </>
+            )}
+          </div>
+
+          {/* ── Project ── */}
+          <div className="space-y-3 pt-2" style={{ borderTop: "1px solid #E2E8F0" }}>
+            <h3 className="text-xs font-bold uppercase tracking-wide pt-3" style={{ color: "#6B7280" }}>Project</h3>
+            <div className="flex flex-wrap gap-2">
+              {[["none", "No Profile"], ["existing", "Select Existing"], ["new", "Add New"]].map(([mode, label]) => (
+                <button key={mode} type="button" onClick={() => set("projectMode", mode)}
+                  className="text-xs font-bold px-3 py-1.5 rounded-full"
+                  style={form.projectMode === mode ? { background: "#1E88E5", color: "#FFFFFF" } : { background: "#F1F5F9", color: "#1F2937" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {form.projectMode === "none" && (
+              <Field label="Project Name" hint="Plain text — no shared project profile.">
+                <TextInput value={form.projectName} onChange={(e) => set("projectName", e.target.value)} placeholder="e.g. Skyline Residency" />
+              </Field>
+            )}
+
+            {form.projectMode === "existing" && (
+              <Field label="Select Project">
+                <Select value={form.projectId || ""} onChange={(e) => selectExistingProject(e.target.value)}>
+                  <option value="">— Select —</option>
+                  {availableProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </Select>
+              </Field>
+            )}
+
+            {(form.projectMode === "existing" || form.projectMode === "new") && (
+              <>
+                {form.projectMode === "new" && (
+                  <Field label="Project Name">
+                    <TextInput value={form.projectName} onChange={(e) => set("projectName", e.target.value)} placeholder="e.g. Skyline Residency" />
+                  </Field>
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <Field label="Land Area (acres)">
+                    <TextInput type="number" min="0" step="0.01" value={form.projectLandAreaAcres} onChange={(e) => set("projectLandAreaAcres", e.target.value)} placeholder="e.g. 5.2" />
+                  </Field>
+                  <Field label="Total Towers">
+                    <TextInput type="number" min="0" value={form.projectTotalTowers} onChange={(e) => set("projectTotalTowers", e.target.value)} placeholder="e.g. 5" />
+                  </Field>
+                  <Field label="Total Floors">
+                    <TextInput type="number" min="0" value={form.projectTotalFloors} onChange={(e) => set("projectTotalFloors", e.target.value)} placeholder="e.g. 18" />
+                  </Field>
+                  <Field label="Total Units">
+                    <TextInput type="number" min="0" value={form.projectTotalUnits} onChange={(e) => set("projectTotalUnits", e.target.value)} placeholder="e.g. 420" />
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Homes per Floor">
+                    <TextInput type="number" min="0" value={form.projectHomesPerFloor} onChange={(e) => set("projectHomesPerFloor", e.target.value)} placeholder="e.g. 4" />
+                  </Field>
+                  <Field label="Open Space / Green Area (%)">
+                    <TextInput type="number" min="0" max="100" value={form.projectOpenSpacePercent} onChange={(e) => set("projectOpenSpacePercent", e.target.value)} placeholder="e.g. 65" />
+                  </Field>
+                </div>
+                {unitsPerAcrePreview() && (
+                  <p className="text-xs" style={{ color: "#6B7280" }}>
+                    Density: <span className="font-bold" style={{ color: "#1E88E5" }}>{unitsPerAcrePreview()} units/acre</span> — auto-computed from land area and total units, saved automatically.
+                  </p>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Construction Stage">
+                    <Select value={form.projectConstructionStage} onChange={(e) => set("projectConstructionStage", e.target.value)}>
+                      <option value="">— N/A —</option>
+                      {CONSTRUCTION_STAGE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Expected Possession Date">
+                    <TextInput type="date" value={form.projectExpectedPossessionDate} onChange={(e) => set("projectExpectedPossessionDate", e.target.value)} />
+                  </Field>
+                </div>
+                {form.projectConstructionStageVerifiedAt && (
+                  <p className="text-xs" style={{ color: "#6B7280" }}>
+                    Stage last verified {new Date(form.projectConstructionStageVerifiedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} — updates automatically whenever the stage changes.
+                  </p>
+                )}
+                <Field label="Handover Timeline" hint="Realistic timeline notes — phasing, typical grace period, etc.">
+                  <TextInput value={form.projectHandoverTimeline} onChange={(e) => set("projectHandoverTimeline", e.target.value)} placeholder="e.g. Phase 1 by Q4 2027, 3-6 month grace period typical" />
+                </Field>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="RERA Registration Number">
+                    <TextInput value={form.projectReraNumber} onChange={(e) => set("projectReraNumber", e.target.value)} placeholder="e.g. RP/12/2026/000123" />
+                  </Field>
+                  <Field label="RERA State">
+                    <Select value={form.projectReraState} onChange={(e) => set("projectReraState", e.target.value)}>
+                      <option value="">— N/A —</option>
+                      {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="RERA Project Name" hint="If different from the marketing name above.">
+                    <TextInput value={form.projectReraProjectName} onChange={(e) => set("projectReraProjectName", e.target.value)} />
+                  </Field>
+                  <Field label="RERA Verification Link">
+                    <TextInput value={form.projectReraVerificationLink} onChange={(e) => set("projectReraVerificationLink", e.target.value)} placeholder="https://rera...gov.in/..." />
+                  </Field>
+                </div>
+
+                <Field label="Approvals & Statutory Documents" hint="All optional — track whichever approvals apply.">
+                  <div className="space-y-2.5">
+                    {form.projectApprovals.map((a) => (
+                      <div key={a._key} className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr_1.5fr_auto] gap-2 sm:items-center">
+                        <TextInput value={a.name} onChange={(e) => updateApproval(a._key, "name", e.target.value)} placeholder="e.g. Environmental Clearance" />
+                        <Select value={a.status} onChange={(e) => updateApproval(a._key, "status", e.target.value)}>
+                          {APPROVAL_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </Select>
+                        <TextInput value={a.documentUrl} onChange={(e) => updateApproval(a._key, "documentUrl", e.target.value)} placeholder="Document link (optional)" />
+                        <button type="button" onClick={() => removeApproval(a._key)} className="text-xs font-bold px-2 py-2.5 rounded-lg hover:opacity-80" style={{ color: "#DC2626" }}>Remove</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={addApproval} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>+ Add Approval</button>
+                  </div>
+                </Field>
+
+                <Field label="Project Documents" hint="Brochure, floor plans, master plan, specification sheet — upload a PDF/image or paste a link.">
+                  <div className="space-y-2.5">
+                    {form.projectDocuments.map((d) => (
+                      <div key={d._key} className="grid grid-cols-1 sm:grid-cols-[1fr_1.2fr_1.5fr_auto_auto] gap-2 sm:items-center">
+                        <Select value={d.type} onChange={(e) => updateDocument(d._key, "type", e.target.value)}>
+                          {DOCUMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </Select>
+                        <TextInput value={d.label} onChange={(e) => updateDocument(d._key, "label", e.target.value)} placeholder="Label (e.g. 2026 Brochure)" />
+                        <TextInput value={d.url} onChange={(e) => updateDocument(d._key, "url", e.target.value)} placeholder="Link, or upload →" />
+                        <label className="text-xs font-bold px-2.5 py-2.5 rounded-lg text-center cursor-pointer" style={{ background: "#F1F5F9", color: "#1F2937" }}>
+                          Upload
+                          <input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => handleDocumentFileSelected(d._key, e)} />
+                        </label>
+                        <button type="button" onClick={() => removeDocument(d._key)} className="text-xs font-bold px-2 py-2.5 rounded-lg hover:opacity-80" style={{ color: "#DC2626" }}>Remove</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={addDocument} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>+ Add Document</button>
+                    {docUploading && <p className="text-xs" style={{ color: "#6B7280" }}>Uploading…</p>}
+                    {docUploadError && <p className="text-xs" style={{ color: "#DC2626" }}>{docUploadError}</p>}
+                  </div>
+                </Field>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Structure Type">
+                    <TextInput value={form.projectStructureType} onChange={(e) => set("projectStructureType", e.target.value)} placeholder="e.g. RCC framed structure" />
+                  </Field>
+                  <Field label="Construction Quality">
+                    <TextInput value={form.projectConstructionQuality} onChange={(e) => set("projectConstructionQuality", e.target.value)} placeholder="e.g. Premium, ISO-certified contractor" />
+                  </Field>
+                </div>
+                <Field label="Key Materials & Brand Specifications">
+                  <textarea value={form.projectKeyMaterials} onChange={(e) => set("projectKeyMaterials", e.target.value)} rows={2}
+                    placeholder="e.g. UPVC windows, vitrified tile flooring, modular kitchen, Kohler/Jaguar fittings"
+                    className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none" style={inputStyle} />
+                </Field>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ── Legal & Verification Information (Section 2E) ── */}
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Legal &amp; Verification Information</h2>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>Shown on the public listing alongside the standard due-diligence disclaimer.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="RERA Status">
+              <Select value={form.reraStatus} onChange={(e) => set("reraStatus", e.target.value)}>
+                {RERA_STATUS_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </Select>
+            </Field>
+            <Field label="Ownership Type">
+              <Select value={form.ownershipType} onChange={(e) => set("ownershipType", e.target.value)}>
+                <option value="">— N/A —</option>
+                {OWNERSHIP_TYPE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+              </Select>
+            </Field>
+            <Field label="Title Status">
+              <Select value={form.titleStatus} onChange={(e) => set("titleStatus", e.target.value)}>
+                <option value="">— N/A —</option>
+                {TITLE_STATUS_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+            </Field>
+            <Field label="Document Verification Status">
+              <Select value={form.documentVerificationStatus} onChange={(e) => set("documentVerificationStatus", e.target.value)}>
+                {DOC_VERIFICATION_STATUS_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Encumbrance / Loan Status">
+              <Select value={form.encumbranceStatus} onChange={(e) => set("encumbranceStatus", e.target.value)}>
+                <option value="">— N/A —</option>
+                {ENCUMBRANCE_STATUS_OPTIONS.map((e_) => <option key={e_} value={e_}>{e_}</option>)}
+              </Select>
+            </Field>
+            <Field label="Encumbrance Notes">
+              <TextInput value={form.encumbranceNotes} onChange={(e) => set("encumbranceNotes", e.target.value)} placeholder="e.g. Existing loan with SBI, NOC pending" />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Occupancy Certificate">
+              <Select value={form.occupancyCertificateStatus} onChange={(e) => set("occupancyCertificateStatus", e.target.value)}>
+                <option value="">— N/A —</option>
+                {CERTIFICATE_STATUS_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="Completion Certificate">
+              <Select value={form.completionCertificateStatus} onChange={(e) => set("completionCertificateStatus", e.target.value)}>
+                <option value="">— N/A —</option>
+                {CERTIFICATE_STATUS_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="Possession Certificate">
+              <Select value={form.possessionCertificateStatus} onChange={(e) => set("possessionCertificateStatus", e.target.value)}>
+                <option value="">— N/A —</option>
+                {CERTIFICATE_STATUS_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Approved Building Plan">
+              <Select value={form.buildingPlanStatus} onChange={(e) => set("buildingPlanStatus", e.target.value)}>
+                <option value="">— N/A —</option>
+                {BUILDING_PLAN_STATUS_OPTIONS.map((b) => <option key={b} value={b}>{b}</option>)}
+              </Select>
+            </Field>
+            <Field label="Property Tax Status">
+              <Select value={form.propertyTaxStatus} onChange={(e) => set("propertyTaxStatus", e.target.value)}>
+                <option value="">— N/A —</option>
+                {PROPERTY_TAX_STATUS_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </Select>
+            </Field>
+            <Field label="Utility Connection Status">
+              <Select value={form.utilityConnectionStatus} onChange={(e) => set("utilityConnectionStatus", e.target.value)}>
+                <option value="">— N/A —</option>
+                {UTILITY_STATUS_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+              </Select>
+            </Field>
+          </div>
+          <Field label="Utility Connection Notes">
+            <TextInput value={form.utilityConnectionNotes} onChange={(e) => set("utilityConnectionNotes", e.target.value)} placeholder="e.g. Water connected; power meter pending" />
+          </Field>
+
+          <div className="rounded-xl p-4" style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+              <input type="checkbox" checked={form.posterVerified} onChange={(e) => set("posterVerified", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+              Verified {form.postedBy || "Owner"} — shows a "Verified" badge on the public listing
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+              <Field label="Verification Date">
+                <TextInput type="date" value={form.verificationDate} onChange={(e) => set("verificationDate", e.target.value)} />
+              </Field>
+              <Field label="Verification Source">
+                <TextInput value={form.verificationSource} onChange={(e) => set("verificationSource", e.target.value)} placeholder="e.g. Site visit, document review" />
+              </Field>
+            </div>
+            <button type="button" onClick={markVerifiedToday} className="text-xs font-bold px-3 py-1.5 rounded-lg mt-3" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+              Mark Verified Today
+            </button>
+          </div>
+
+          <p className="text-xs" style={{ color: "#6B7280" }}>
+            The standard due-diligence disclaimer is shown automatically alongside this section on every listing — edit its wording under Admin → Site Content → Settings.
+          </p>
         </div>
 
         {/* ── Photos ── */}

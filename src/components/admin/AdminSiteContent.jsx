@@ -918,6 +918,10 @@ function SettingsPanel() {
           <Field label="LinkedIn URL"><TextInput value={form.linkedin} onChange={(e) => setForm({ ...form, linkedin: e.target.value })} placeholder="https://linkedin.com/company/yourpage" /></Field>
           <Field label="YouTube URL"><TextInput value={form.youtube} onChange={(e) => setForm({ ...form, youtube: e.target.value })} placeholder="https://youtube.com/@yourchannel" /></Field>
         </div>
+        <p className="text-xs font-bold pt-2" style={{ color: "#1F2937" }}>Legal</p>
+        <Field label="Legal Disclaimer" hint="Shown alongside the Legal & Verification section on every property page.">
+          <TextArea rows={4} value={form.legalDisclaimer} onChange={(e) => setForm({ ...form, legalDisclaimer: e.target.value })} />
+        </Field>
         <div className="pt-2">
           <button type="submit" disabled={saving} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}>
             {saving ? "Saving..." : "Save"}

@@ -415,6 +415,7 @@ function normalizeSiteSettings(row) {
     instagram: row.instagram_url || "",
     linkedin: row.linkedin_url || "",
     youtube: row.youtube_url || "",
+    legalDisclaimer: row.legal_disclaimer || "",
   };
 }
 
@@ -436,6 +437,7 @@ export async function updateSiteSettings(id, settings) {
     instagram_url: settings.instagram || null,
     linkedin_url: settings.linkedin || null,
     youtube_url: settings.youtube || null,
+    legal_disclaimer: settings.legalDisclaimer || null,
     updated_at: new Date().toISOString(),
   };
   const { data, error } = await safeQuery(

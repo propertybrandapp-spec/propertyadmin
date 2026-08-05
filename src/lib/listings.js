@@ -141,6 +141,64 @@ export function normalizeListing(row) {
     publicTransportNotes: row.public_transport_notes || null,
     neighbourhoodProfile: row.neighbourhood_profile || null,
 
+    // ── Section 2D: Project & Developer Information ──
+    developerId: row.developer_id || null,
+    developerName: row.developer_name || row.developer?.name || null,  // plain-text fallback when not linked
+    // Nested profile from the join (see LISTING_SELECT) — null if this
+    // listing isn't linked to a verified developer/project profile.
+    developer: row.developer ? {
+      id: row.developer.id,
+      name: row.developer.name,
+      verified: !!row.developer.verified,
+      experienceYears: row.developer.experience_years != null ? Number(row.developer.experience_years) : null,
+      completedProjectsCount: row.developer.completed_projects_count != null ? Number(row.developer.completed_projects_count) : null,
+      currentProjectsCount: row.developer.current_projects_count != null ? Number(row.developer.current_projects_count) : null,
+      description: row.developer.description || null,
+    } : null,
+    projectId: row.project_id || null,
+    project: row.project ? {
+      id: row.project.id,
+      name: row.project.name,
+      landAreaAcres: row.project.land_area_acres != null ? Number(row.project.land_area_acres) : null,
+      totalTowers: row.project.total_towers != null ? Number(row.project.total_towers) : null,
+      totalFloors: row.project.total_floors != null ? Number(row.project.total_floors) : null,
+      totalUnits: row.project.total_units != null ? Number(row.project.total_units) : null,
+      unitsPerAcre: row.project.units_per_acre != null ? Number(row.project.units_per_acre) : null,
+      homesPerFloor: row.project.homes_per_floor != null ? Number(row.project.homes_per_floor) : null,
+      openSpacePercent: row.project.open_space_percent != null ? Number(row.project.open_space_percent) : null,
+      constructionStage: row.project.construction_stage || null,
+      constructionStageVerifiedAt: row.project.construction_stage_verified_at || null,
+      expectedPossessionDate: row.project.expected_possession_date || null,
+      handoverTimeline: row.project.handover_timeline || null,
+      reraNumber: row.project.rera_number || null,
+      reraState: row.project.rera_state || null,
+      reraProjectName: row.project.rera_project_name || null,
+      reraVerificationLink: row.project.rera_verification_link || null,
+      approvals: Array.isArray(row.project.approvals) ? row.project.approvals : [],
+      documents: Array.isArray(row.project.documents) ? row.project.documents : [],
+      constructionQuality: row.project.construction_quality || null,
+      structureType: row.project.structure_type || null,
+      keyMaterials: row.project.key_materials || null,
+    } : null,
+
+    // ── Section 2E: Legal & Verification Information ──
+    reraStatus: row.rera_status || "Pending Verification",
+    ownershipType: row.ownership_type || null,
+    titleStatus: row.title_status || null,
+    documentVerificationStatus: row.document_verification_status || "Pending",
+    encumbranceStatus: row.encumbrance_status || null,
+    encumbranceNotes: row.encumbrance_notes || null,
+    occupancyCertificateStatus: row.occupancy_certificate_status || null,
+    completionCertificateStatus: row.completion_certificate_status || null,
+    possessionCertificateStatus: row.possession_certificate_status || null,
+    buildingPlanStatus: row.building_plan_status || null,
+    propertyTaxStatus: row.property_tax_status || null,
+    utilityConnectionStatus: row.utility_connection_status || null,
+    utilityConnectionNotes: row.utility_connection_notes || null,
+    posterVerified: !!row.poster_verified,
+    verificationDate: row.verification_date || null,
+    verificationSource: row.verification_source || null,
+
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     videoUrls: row.video_urls || [],
     googleMapsLink: row.google_maps_link || null,
@@ -303,6 +361,38 @@ export function denormalizeListing(f) {
     public_transport_notes: f.publicTransportNotes || null,
     neighbourhood_profile: f.neighbourhoodProfile || null,
 
+    // ── Section 2D: Project & Developer Information ──
+    // developer_id/project_id link to a full verified profile (admin-only —
+    // see src/lib/developers.js); developer_name is a plain-text fallback
+    // anyone (including public self-listers) can set directly. project_name
+    // itself is already set above under Section 2A identity fields.
+    developer_id: f.developerId || null,
+    developer_name: f.developerName || null,
+    project_id: f.projectId || null,
+
+    // ── Section 2E: Legal & Verification Information ──
+    // poster_verified / verification_date / verification_source /
+    // document_verification_status and the certificate/status fields are
+    // only ever meaningfully set from the Admin form — the public Post
+    // Property form just leaves them at their defaults (see EMPTY_FORM
+    // there, which only exposes ownershipType/reraStatus).
+    rera_status: f.reraStatus || "Pending Verification",
+    ownership_type: f.ownershipType || null,
+    title_status: f.titleStatus || null,
+    document_verification_status: f.documentVerificationStatus || "Pending",
+    encumbrance_status: f.encumbranceStatus || null,
+    encumbrance_notes: f.encumbranceNotes || null,
+    occupancy_certificate_status: f.occupancyCertificateStatus || null,
+    completion_certificate_status: f.completionCertificateStatus || null,
+    possession_certificate_status: f.possessionCertificateStatus || null,
+    building_plan_status: f.buildingPlanStatus || null,
+    property_tax_status: f.propertyTaxStatus || null,
+    utility_connection_status: f.utilityConnectionStatus || null,
+    utility_connection_notes: f.utilityConnectionNotes || null,
+    poster_verified: !!f.posterVerified,
+    verification_date: f.verificationDate || null,
+    verification_source: f.verificationSource || null,
+
     updated_at: new Date().toISOString(),
   };
 }
@@ -320,10 +410,17 @@ function daysAgo(isoDate) {
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
+// Every listing read pulls in its linked developer/project profile (if any)
+// in the same query — Supabase resolves this via the FK relationship, no
+// extra round-trip needed. Both come back `null` when a listing isn't linked
+// to one (e.g. public self-listings, which only ever set developer_name /
+// project_name plain text instead).
+const LISTING_SELECT = "*, developer:developers(*), project:projects(*)";
+
 // ── Public site: only ever see moderation-approved ("Live") listings ────────
 export async function fetchPublicListings() {
   const { data, error } = await safeQuery(
-    supabase.from("listings").select("*").eq("status", "Live").order("created_at", { ascending: false })
+    supabase.from("listings").select(LISTING_SELECT).eq("status", "Live").order("created_at", { ascending: false })
   );
   if (error) return { data: [], error };
   return { data: (data || []).map(normalizeListing), error: null };
@@ -332,14 +429,14 @@ export async function fetchPublicListings() {
 // ── Admin console: sees every listing regardless of moderation status ───────
 export async function fetchAdminListings() {
   const { data, error } = await safeQuery(
-    supabase.from("listings").select("*").order("created_at", { ascending: false })
+    supabase.from("listings").select(LISTING_SELECT).order("created_at", { ascending: false })
   );
   if (error) return { data: [], error };
   return { data: (data || []).map(normalizeListing), error: null };
 }
 
 export async function fetchListingById(id) {
-  const { data, error } = await safeQuery(supabase.from("listings").select("*").eq("id", id).single());
+  const { data, error } = await safeQuery(supabase.from("listings").select(LISTING_SELECT).eq("id", id).single());
   if (error) return { data: null, error };
   return { data: normalizeListing(data), error: null };
 }
@@ -348,7 +445,7 @@ export async function fetchListingById(id) {
 // previously-saved ids (the SavedItemsContext only tracks the ids themselves).
 export async function fetchListingsByIds(ids) {
   if (!ids || ids.length === 0) return { data: [], error: null };
-  const { data, error } = await safeQuery(supabase.from("listings").select("*").in("id", ids));
+  const { data, error } = await safeQuery(supabase.from("listings").select(LISTING_SELECT).in("id", ids));
   if (error) return { data: [], error };
   return { data: (data || []).map(normalizeListing), error: null };
 }
@@ -357,7 +454,7 @@ export async function fetchListingsByIds(ids) {
 // submitted, regardless of moderation status, so they can track it.
 export async function fetchMyListings(userId) {
   const { data, error } = await safeQuery(
-    supabase.from("listings").select("*").eq("posted_by_user_id", userId).order("created_at", { ascending: false })
+    supabase.from("listings").select(LISTING_SELECT).eq("posted_by_user_id", userId).order("created_at", { ascending: false })
   );
   if (error) return { data: [], error };
   return { data: (data || []).map(normalizeListing), error: null };
@@ -368,14 +465,14 @@ export async function createListing(property) {
   const payload = denormalizeListing(property);
   if (sessionData?.session) payload.posted_by_user_id = sessionData.session.user.id;
 
-  const { data, error } = await safeQuery(supabase.from("listings").insert(payload).select().single());
+  const { data, error } = await safeQuery(supabase.from("listings").insert(payload).select(LISTING_SELECT).single());
   if (error) return { data: null, error };
   return { data: normalizeListing(data), error: null };
 }
 
 export async function updateListing(id, property) {
   const payload = denormalizeListing(property);
-  const { data, error } = await safeQuery(supabase.from("listings").update(payload).eq("id", id).select().single());
+  const { data, error } = await safeQuery(supabase.from("listings").update(payload).eq("id", id).select(LISTING_SELECT).single());
   if (error) return { data: null, error };
   return { data: normalizeListing(data), error: null };
 }
