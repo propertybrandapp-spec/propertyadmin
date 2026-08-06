@@ -199,6 +199,26 @@ export function normalizeListing(row) {
     verificationDate: row.verification_date || null,
     verificationSource: row.verification_source || null,
 
+    // ── Section 2F: Amenities & Lifestyle ──
+    // `amenities` itself is unchanged above (still the simple checklist that
+    // powers search/filtering) — amenityDetails just layers optional
+    // status/condition onto whichever of those are checked.
+    amenityDetails: Array.isArray(row.amenity_details) ? row.amenity_details : [],
+    unitFeatures: row.unit_features || [],
+    parkingType: row.parking_type || null,
+    parkingSlots: row.parking_slots != null ? Number(row.parking_slots) : null,
+    evChargingStatus: row.ev_charging_status || null,
+    powerBackupType: row.power_backup_type || null,
+    securityFeatures: row.security_features || [],
+    waterSource: row.water_source || null,
+    waterSewageFeatures: row.water_sewage_features || [],
+    internetReadiness: row.internet_readiness || null,
+    mobileNetworkQuality: row.mobile_network_quality || null,
+    petPolicy: row.pet_policy || null,
+    petPolicyNotes: row.pet_policy_notes || null,
+    seniorCitizenFeatures: row.senior_citizen_features || [],
+    accessibilityFeatures: row.accessibility_features || [],
+
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     videoUrls: row.video_urls || [],
     googleMapsLink: row.google_maps_link || null,
@@ -392,6 +412,26 @@ export function denormalizeListing(f) {
     poster_verified: !!f.posterVerified,
     verification_date: f.verificationDate || null,
     verification_source: f.verificationSource || null,
+
+    // ── Section 2F: Amenities & Lifestyle ──
+    // Strip client-only `_key` (React list key) from amenity_details before saving.
+    amenity_details: Array.isArray(f.amenityDetails)
+      ? f.amenityDetails.filter((a) => a.name).map(({ name, status, condition }) => ({ name, status, condition }))
+      : [],
+    unit_features: Array.isArray(f.unitFeatures) ? f.unitFeatures : [],
+    parking_type: f.parkingType || null,
+    parking_slots: f.parkingSlots !== "" && f.parkingSlots != null ? parseInt(f.parkingSlots, 10) || null : null,
+    ev_charging_status: f.evChargingStatus || null,
+    power_backup_type: f.powerBackupType || null,
+    security_features: Array.isArray(f.securityFeatures) ? f.securityFeatures : [],
+    water_source: f.waterSource || null,
+    water_sewage_features: Array.isArray(f.waterSewageFeatures) ? f.waterSewageFeatures : [],
+    internet_readiness: f.internetReadiness || null,
+    mobile_network_quality: f.mobileNetworkQuality || null,
+    pet_policy: f.petPolicy || null,
+    pet_policy_notes: f.petPolicyNotes || null,
+    senior_citizen_features: Array.isArray(f.seniorCitizenFeatures) ? f.seniorCitizenFeatures : [],
+    accessibility_features: Array.isArray(f.accessibilityFeatures) ? f.accessibilityFeatures : [],
 
     updated_at: new Date().toISOString(),
   };
