@@ -9,7 +9,7 @@ export default {
       colors: {
         // Brand palette
         "pb-navy":    "#0F2D52",
-        "pb-blue":    "#1E88E5",
+        "pb-blue":    "#1565C0",
         "pb-gold":    "#D4AF37",
         "pb-orange":  "#F59E0B",
         "pb-red":     "#DC2626",
@@ -48,7 +48,7 @@ export default {
       },
       boxShadow: {
         "glow-navy":   "0 0 24px rgba(15, 45, 82, 0.20)",
-        "glow-blue":   "0 0 24px rgba(30, 136, 229, 0.15)",
+        "glow-blue":   "0 0 24px rgba(21,101,192, 0.15)",
         "glow-gold":   "0 0 24px rgba(212, 175, 55, 0.20)",
         "glow-red":    "0 0 24px rgba(220, 38, 38, 0.20)",
         "glow-orange": "0 0 24px rgba(245, 158, 11, 0.15)",
@@ -65,11 +65,11 @@ export default {
         "gradient-blue":
           "linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%)",
         "gradient-premium":
-          "linear-gradient(135deg, #0F2D52 0%, #1E88E5 100%)",
+          "linear-gradient(135deg, #0F2D52 0%, #1565C0 100%)",
         "gradient-red":
           "linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)",
         "radial-blue":
-          "radial-gradient(ellipse at 50% 0%, rgba(30,136,229,0.08) 0%, transparent 70%)",
+          "radial-gradient(ellipse at 50% 0%, rgba(21,101,192,0.08) 0%, transparent 70%)",
         "radial-red":
           "radial-gradient(ellipse at 50% 100%, rgba(220,38,38,0.06) 0%, transparent 70%)",
       },

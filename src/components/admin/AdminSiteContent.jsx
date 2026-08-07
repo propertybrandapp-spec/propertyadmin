@@ -104,9 +104,9 @@ function StringListEditor({ items, onChange }) {
     <div>
       <div className="flex flex-wrap gap-2 mb-2">
         {(items || []).map((item, i) => (
-          <span key={i} className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+          <span key={i} className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>
             {item}
-            <button type="button" onClick={() => remove(i)} className="font-bold" style={{ color: "#1565C0" }}>×</button>
+            <button type="button" onClick={() => remove(i)} className="font-bold" style={{ color: "#0D47A1" }}>×</button>
           </span>
         ))}
         {(!items || items.length === 0) && <span className="text-xs" style={{ color: "#6B7280" }}>No items yet.</span>}
@@ -114,7 +114,7 @@ function StringListEditor({ items, onChange }) {
       <div className="flex gap-2">
         <TextInput value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="e.g. Priority Lead Sharing"
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
-        <button type="button" onClick={add} className="text-xs font-bold px-3 rounded-lg shrink-0" style={{ background: "#1E88E5", color: "#FFFFFF" }}>Add</button>
+        <button type="button" onClick={add} className="text-xs font-bold px-3 rounded-lg shrink-0" style={{ background: "#1565C0", color: "#FFFFFF" }}>Add</button>
       </div>
     </div>
   );
@@ -131,12 +131,12 @@ function FeatureListEditor({ items, onChange }) {
       {list.map((f, i) => (
         <div key={i} className="flex items-center gap-2">
           <input type="checkbox" checked={f.included !== false} onChange={(e) => update(i, { included: e.target.checked })}
-            className="w-4 h-4 shrink-0" style={{ accentColor: "#1E88E5" }} />
+            className="w-4 h-4 shrink-0" style={{ accentColor: "#1565C0" }} />
           <TextInput value={f.text} onChange={(e) => update(i, { text: e.target.value })} placeholder="Feature name" />
           <button type="button" onClick={() => remove(i)} className="text-lg font-bold px-1 shrink-0" style={{ color: "#DC2626" }}>×</button>
         </div>
       ))}
-      <button type="button" onClick={add} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>+ Add Feature</button>
+      <button type="button" onClick={add} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>+ Add Feature</button>
     </div>
   );
 }
@@ -189,7 +189,7 @@ function QuickCtaListEditor({ items, onChange }) {
         </div>
       ))}
       {list.length === 0 && <p className="text-xs" style={{ color: "#6B7280" }}>No buttons yet.</p>}
-      <button type="button" onClick={add} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>+ Add Button</button>
+      <button type="button" onClick={add} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>+ Add Button</button>
     </div>
   );
 }
@@ -217,7 +217,7 @@ function RowActions({ active, onEdit, onToggle, onDelete, confirming, setConfirm
       <button onClick={onToggle} className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: "#F1F5F9", color: "#6B7280" }}>
         {active ? "Hide" : "Show"}
       </button>
-      <button onClick={onEdit} className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>Edit</button>
+      <button onClick={onEdit} className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>Edit</button>
       <button onClick={() => setConfirming(true)} className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: "#FEE2E2", color: "#DC2626" }}>Delete</button>
     </div>
   );
@@ -226,7 +226,7 @@ function RowActions({ active, onEdit, onToggle, onDelete, confirming, setConfirm
 function SaveBar({ onCancel, onSave, saving, error }) {
   return (
     <div className="flex items-center gap-3 pt-2">
-      <button type="submit" disabled={saving} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}>
+      <button type="submit" disabled={saving} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}>
         {saving ? "Saving..." : "Save"}
       </button>
       <button type="button" onClick={onCancel} className="text-sm font-semibold px-4 py-2.5 rounded-xl" style={{ background: "#F1F5F9", color: "#6B7280" }}>Cancel</button>
@@ -326,7 +326,7 @@ function HeroContentPanel() {
         </Field>
 
         <div className="pt-2">
-          <button type="submit" disabled={saving} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}>
+          <button type="submit" disabled={saving} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
@@ -361,7 +361,7 @@ function HeroCardForm({ initial, onCancel, onSaved }) {
   }
 
   function setStyle(style) {
-    if (style === "solid") setForm({ ...form, image: "", backgroundColor: form.backgroundColor || "#1E88E5" });
+    if (style === "solid") setForm({ ...form, image: "", backgroundColor: form.backgroundColor || "#1565C0" });
     else setForm({ ...form, backgroundColor: "" });
   }
 
@@ -437,7 +437,7 @@ function HeroCardsPanel() {
       {editing ? (
         <HeroCardForm initial={editing.dbId ? editing : EMPTY_HERO_CARD} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       ) : (
-        <button onClick={() => setEditing(EMPTY_HERO_CARD)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF" }}>+ Add Card</button>
+        <button onClick={() => setEditing(EMPTY_HERO_CARD)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF" }}>+ Add Card</button>
       )}
       {items.length === 0 && !editing && <EmptyState label="No hero cards yet — add one above. The homepage shows built-in demo cards until you do." />}
       {items.map((c) => (
@@ -506,7 +506,7 @@ function TierForm({ initial, onCancel, onSaved }) {
           <Field label="Display order"><TextInput type="number" value={form.order} onChange={(e) => setForm({ ...form, order: parseInt(e.target.value) || 0 })} /></Field>
         </div>
         <label className="flex items-center gap-2 cursor-pointer w-fit">
-          <input type="checkbox" checked={!!form.popular} onChange={(e) => setForm({ ...form, popular: e.target.checked })} className="w-4 h-4" style={{ accentColor: "#1E88E5" }} />
+          <input type="checkbox" checked={!!form.popular} onChange={(e) => setForm({ ...form, popular: e.target.checked })} className="w-4 h-4" style={{ accentColor: "#1565C0" }} />
           <span className="text-sm" style={{ color: "#1F2937" }}>Mark as "Most Popular"</span>
         </label>
         <SaveBar onCancel={onCancel} saving={saving} error={error} />
@@ -533,7 +533,7 @@ function TiersPanel() {
       {editing ? (
         <TierForm initial={editing.dbId ? editing : EMPTY_TIER} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       ) : (
-        <button onClick={() => setEditing(EMPTY_TIER)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF" }}>+ Add Tier</button>
+        <button onClick={() => setEditing(EMPTY_TIER)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF" }}>+ Add Tier</button>
       )}
       {items.length === 0 && !editing && <EmptyState label="No partner tiers yet — add one above. The public Channel Partner page shows built-in demo tiers until you do." />}
       {items.map((t) => (
@@ -543,7 +543,7 @@ function TiersPanel() {
               <div className="flex items-center gap-2 mb-1">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: t.color }} />
                 <p className="text-sm font-bold" style={{ color: "#1F2937" }}>{t.name}</p>
-                {t.popular && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#1E88E5" }}>Popular</span>}
+                {t.popular && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#1565C0" }}>Popular</span>}
                 <ActivePill active={t.active} />
               </div>
               <p className="text-xs" style={{ color: "#6B7280" }}>{t.deals} · {t.commission} commission · {t.perks.length} perks</p>
@@ -601,7 +601,7 @@ function ReviewForm({ initial, onCancel, onSaved }) {
           <Field label="Display order"><TextInput type="number" value={form.order} onChange={(e) => setForm({ ...form, order: parseInt(e.target.value) || 0 })} /></Field>
         </div>
         <label className="flex items-center gap-2 cursor-pointer w-fit">
-          <input type="checkbox" checked={!!form.verified} onChange={(e) => setForm({ ...form, verified: e.target.checked })} className="w-4 h-4" style={{ accentColor: "#1E88E5" }} />
+          <input type="checkbox" checked={!!form.verified} onChange={(e) => setForm({ ...form, verified: e.target.checked })} className="w-4 h-4" style={{ accentColor: "#1565C0" }} />
           <span className="text-sm" style={{ color: "#1F2937" }}>Show "Verified" badge</span>
         </label>
         <SaveBar onCancel={onCancel} saving={saving} error={error} />
@@ -628,7 +628,7 @@ function ReviewsPanel() {
       {editing ? (
         <ReviewForm initial={editing.dbId ? editing : EMPTY_REVIEW} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       ) : (
-        <button onClick={() => setEditing(EMPTY_REVIEW)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF" }}>+ Add Review</button>
+        <button onClick={() => setEditing(EMPTY_REVIEW)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF" }}>+ Add Review</button>
       )}
       {items.length === 0 && !editing && <EmptyState label="No client reviews yet — add one above. The public Reviews page shows built-in demo reviews until you do." />}
       {items.map((r) => (
@@ -692,7 +692,7 @@ function PlanForm({ initial, onCancel, onSaved }) {
         <Field label="Features"><FeatureListEditor items={form.features} onChange={(features) => setForm({ ...form, features })} /></Field>
         <Field label="Display order"><TextInput type="number" value={form.order} onChange={(e) => setForm({ ...form, order: parseInt(e.target.value) || 0 })} className="max-w-[140px]" /></Field>
         <label className="flex items-center gap-2 cursor-pointer w-fit">
-          <input type="checkbox" checked={!!form.popular} onChange={(e) => setForm({ ...form, popular: e.target.checked })} className="w-4 h-4" style={{ accentColor: "#1E88E5" }} />
+          <input type="checkbox" checked={!!form.popular} onChange={(e) => setForm({ ...form, popular: e.target.checked })} className="w-4 h-4" style={{ accentColor: "#1565C0" }} />
           <span className="text-sm" style={{ color: "#1F2937" }}>Mark as "Most Popular"</span>
         </label>
         <SaveBar onCancel={onCancel} saving={saving} error={error} />
@@ -719,7 +719,7 @@ function PlansPanel() {
       {editing ? (
         <PlanForm initial={editing.dbId ? editing : EMPTY_PLAN} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       ) : (
-        <button onClick={() => setEditing(EMPTY_PLAN)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF" }}>+ Add Plan</button>
+        <button onClick={() => setEditing(EMPTY_PLAN)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF" }}>+ Add Plan</button>
       )}
       {items.length === 0 && !editing && <EmptyState label="No subscription plans yet — add one above. The public Property Management page shows built-in demo plans until you do." />}
       {items.map((p) => (
@@ -729,7 +729,7 @@ function PlansPanel() {
               <div className="flex items-center gap-2 mb-1">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: p.color }} />
                 <p className="text-sm font-bold" style={{ color: "#1F2937" }}>{p.name}</p>
-                {p.popular && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#1E88E5" }}>Popular</span>}
+                {p.popular && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#1565C0" }}>Popular</span>}
                 <ActivePill active={p.active} />
               </div>
               <p className="text-xs" style={{ color: "#6B7280" }}>{p.price}{p.period} · {p.idealFor} · {p.features.length} features</p>
@@ -747,7 +747,7 @@ function PlansPanel() {
 // Investment Opportunities
 // ═══════════════════════════════════════════════════════════════════════════
 
-const EMPTY_INVESTMENT = { city: "Bhubaneswar", area: "", tag: "", tagColor: "bg-blue-100 text-[#1E88E5]", appreciation: "", rentalYield: "", priceRange: "", type: "Residential", image: "", active: true, order: 0 };
+const EMPTY_INVESTMENT = { city: "Bhubaneswar", area: "", tag: "", tagColor: "bg-blue-100 text-[#1565C0]", appreciation: "", rentalYield: "", priceRange: "", type: "Residential", image: "", active: true, order: 0 };
 const PROPERTY_TYPES = ["Residential", "Apartments", "Commercial", "Plots"];
 
 function InvestmentForm({ initial, onCancel, onSaved }) {
@@ -833,7 +833,7 @@ function InvestmentsPanel() {
       {editing ? (
         <InvestmentForm initial={editing.dbId ? editing : EMPTY_INVESTMENT} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       ) : (
-        <button onClick={() => setEditing(EMPTY_INVESTMENT)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF" }}>+ Add Opportunity</button>
+        <button onClick={() => setEditing(EMPTY_INVESTMENT)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF" }}>+ Add Opportunity</button>
       )}
       {items.length === 0 && !editing && <EmptyState label="No investment opportunities yet — add one above. The public Investment Advisory page shows built-in demo corridors until you do." />}
       {items.map((o) => (
@@ -923,7 +923,7 @@ function SettingsPanel() {
           <TextArea rows={4} value={form.legalDisclaimer} onChange={(e) => setForm({ ...form, legalDisclaimer: e.target.value })} />
         </Field>
         <div className="pt-2">
-          <button type="submit" disabled={saving} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}>
+          <button type="submit" disabled={saving} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
@@ -987,7 +987,7 @@ function OfficesPanel() {
       {editing ? (
         <OfficeForm initial={editing.dbId ? editing : EMPTY_OFFICE} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       ) : (
-        <button onClick={() => setEditing(EMPTY_OFFICE)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1E88E5", color: "#FFFFFF" }}>+ Add Office</button>
+        <button onClick={() => setEditing(EMPTY_OFFICE)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF" }}>+ Add Office</button>
       )}
       {items.length === 0 && !editing && <EmptyState label="No office locations yet — add one above." />}
       {items.map((o) => (
@@ -1058,14 +1058,14 @@ function ListingOptionsPanel() {
             placeholder={`Add a new ${FIELD_TYPES.find((f) => f.id === activeType)?.label.toLowerCase().replace(/s$/, "")}...`}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
           />
-          <button onClick={handleAdd} className="text-xs font-bold px-4 rounded-lg shrink-0" style={{ background: "#1E88E5", color: "#FFFFFF" }}>Add</button>
+          <button onClick={handleAdd} className="text-xs font-bold px-4 rounded-lg shrink-0" style={{ background: "#1565C0", color: "#FFFFFF" }}>Add</button>
         </div>
         <div className="flex flex-wrap gap-2">
           {filtered.map((o) => (
             <span
               key={o.id}
               className="flex items-center gap-2 text-xs font-semibold pl-3 pr-2 py-1.5 rounded-lg"
-              style={{ background: o.active ? "#EFF6FF" : "#F1F5F9", color: o.active ? "#1E88E5" : "#6B7280" }}
+              style={{ background: o.active ? "#EFF6FF" : "#F1F5F9", color: o.active ? "#1565C0" : "#6B7280" }}
             >
               {o.value}
               <button onClick={() => toggleActive(o)} className="text-[10px] font-bold underline">{o.active ? "Hide" : "Show"}</button>
@@ -1102,7 +1102,7 @@ export default function AdminSiteContent({ onNavigate, onLogout, adminProfile })
             onClick={() => setActiveTab(tab.id)}
             className="text-sm font-bold px-4 py-2 rounded-xl whitespace-nowrap transition-colors"
             style={{
-              background: activeTab === tab.id ? "#1E88E5" : "#F1F5F9",
+              background: activeTab === tab.id ? "#1565C0" : "#F1F5F9",
               color: activeTab === tab.id ? "#FFFFFF" : "#6B7280",
             }}
           >

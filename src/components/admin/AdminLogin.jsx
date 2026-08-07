@@ -75,7 +75,7 @@ export default function AdminLogin({ onLoginSuccess }) {
                 placeholder="you@propertybrands.in"
                 className="w-full text-sm rounded-xl px-4 py-3 focus:outline-none transition"
                 style={{ background: "#F8FAFC", border: "1.5px solid #E2E8F0", color: "#1F2937" }}
-                onFocus={(e) => e.target.style.borderColor = "#1E88E5"}
+                onFocus={(e) => e.target.style.borderColor = "#1565C0"}
                 onBlur={(e) => e.target.style.borderColor = "#E2E8F0"}
               />
             </div>
@@ -90,7 +90,7 @@ export default function AdminLogin({ onLoginSuccess }) {
                 placeholder="••••••••"
                 className="w-full text-sm rounded-xl px-4 py-3 focus:outline-none transition"
                 style={{ background: "#F8FAFC", border: "1.5px solid #E2E8F0", color: "#1F2937" }}
-                onFocus={(e) => e.target.style.borderColor = "#1E88E5"}
+                onFocus={(e) => e.target.style.borderColor = "#1565C0"}
                 onBlur={(e) => e.target.style.borderColor = "#E2E8F0"}
               />
             </div>
@@ -105,7 +105,7 @@ export default function AdminLogin({ onLoginSuccess }) {
               type="submit"
               disabled={loading}
               className="w-full py-3 rounded-xl text-sm font-bold transition-all"
-              style={{ background: loading ? "#1565C0" : "#1E88E5", color: "#FFFFFF", opacity: loading ? 0.7 : 1 }}
+              style={{ background: loading ? "#0D47A1" : "#1565C0", color: "#FFFFFF", opacity: loading ? 0.7 : 1 }}
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
@@ -113,7 +113,7 @@ export default function AdminLogin({ onLoginSuccess }) {
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: "#6B7280" }}>
-          Not an admin? <a href={MAIN_SITE_URL} className="font-semibold" style={{ color: "#1E88E5" }}>Return to main site</a>
+          Not an admin? <a href={MAIN_SITE_URL} className="font-semibold" style={{ color: "#1565C0" }}>Return to main site</a>
         </p>
       </div>
     </div>

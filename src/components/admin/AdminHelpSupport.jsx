@@ -42,7 +42,7 @@ export default function AdminHelpSupport({ onNavigate, onLogout, adminProfile })
           ))}
         </div>
 
-        <div className="rounded-2xl p-6" style={{ background: "#EFF6FF", border: "1px solid #1E88E5" }}>
+        <div className="rounded-2xl p-6" style={{ background: "#EFF6FF", border: "1px solid #1565C0" }}>
           <h2 className="text-sm font-bold mb-2" style={{ color: "#1F2937" }}>Still stuck?</h2>
           <p className="text-xs mb-3" style={{ color: "#6B7280" }}>
             Reach out and include what you were trying to do and any error message you saw.
@@ -50,7 +50,7 @@ export default function AdminHelpSupport({ onNavigate, onLogout, adminProfile })
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="inline-block text-sm font-bold px-4 py-2.5 rounded-xl"
-            style={{ background: "#1E88E5", color: "#FFFFFF" }}
+            style={{ background: "#1565C0", color: "#FFFFFF" }}
           >
             Email {SUPPORT_EMAIL}
           </a>

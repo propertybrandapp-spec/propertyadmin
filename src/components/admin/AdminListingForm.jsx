@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AdminLayout from "./AdminLayout";
 import { createListing, updateListing, deleteListing, LANDMARK_CATEGORIES } from "../../lib/listings";
 import { fetchDevelopers, createDeveloper, updateDeveloper, fetchProjects, createProject, updateProject } from "../../lib/developers";
-import { uploadToR2, validateImageFile, validateDocumentFile } from "../../lib/r2Upload";
+import { uploadToR2, validateImageFile, validateDocumentFile, computeImageHash, hammingDistance, looksLikeScreenshot, getImageDimensions } from "../../lib/r2Upload";
 import { fetchActiveListingFieldOptionsGrouped } from "../../lib/listingOptions";
 import LocationPicker, { reverseGeocode } from "./LocationPicker";
 
@@ -34,7 +34,7 @@ const ADDRESS_VISIBILITY_OPTIONS = ["Exact Address", "Approximate Location", "Lo
 const NEIGHBOURHOOD_PROFILE_OPTIONS = ["Residential", "Commercial", "Mixed-Use", "Emerging Growth Corridor"];
 // ── New in Section 2D: Project & Developer Information ──
 const CONSTRUCTION_STAGE_OPTIONS = ["Pre-Launch", "Foundation", "Under Construction", "Structure Complete", "Finishing Stage", "Ready to Move", "Completed"];
-const DOCUMENT_TYPE_OPTIONS = ["Brochure", "Floor Plan", "Master Plan", "Specification Sheet", "Other"];
+const DOCUMENT_TYPE_OPTIONS = ["Brochure", "Floor Plan", "Master Plan", "Tower Location Map", "Specification Sheet", "Other"];
 const APPROVAL_STATUS_OPTIONS = ["Approved", "Pending", "In Progress", "Not Required"];
 const INDIAN_STATES = ["Andhra Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi NCR", "Goa", "Gujarat", "Haryana", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Odisha", "Punjab", "Rajasthan", "Tamil Nadu", "Telangana", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Other"];
 // ── New in Section 2E: Legal & Verification Information ──
@@ -62,8 +62,13 @@ const SENIOR_CITIZEN_FEATURES_OPTIONS = ["Ramps", "Lifts", "Handrails", "Common 
 const ACCESSIBILITY_FEATURES_OPTIONS = ["Wheelchair Ramps", "Wide Doorways", "Accessible Restrooms", "Braille Signage", "Accessible Parking", "Elevator Access", "Tactile Flooring"];
 const AMENITY_STATUS_OPTIONS = ["Available", "Under Maintenance", "Coming Soon", "Not Available"];
 const AMENITY_CONDITION_OPTIONS = ["New", "Good", "Fair", "Needs Repair"];
+// ── New in Section 2G: Media & Virtual Experience ──
+const ROOM_LABEL_OPTIONS = ["Exterior", "Living Room", "Kitchen", "Bedroom", "Bathroom", "Balcony", "Dining Room", "Other"];
+const MANDATORY_ROOM_CATEGORIES = ["Exterior", "Living Room", "Kitchen", "Bedroom", "Bathroom", "Balcony"];
+const MIN_PHOTOS = 8;
+const MAX_RECOMMENDED_PHOTOS = 15;
 const BADGE_COLOR_PRESETS = [
-  { label: "Blue", value: "#1E88E5" },
+  { label: "Blue", value: "#1565C0" },
   { label: "Green", value: "#16A34A" },
   { label: "Orange", value: "#F59E0B" },
   { label: "Gold", value: "#D4AF37" },
@@ -97,7 +102,7 @@ const EMPTY_FORM = {
   featured: false,
   verified: false,
   badge: "",
-  badgeColor: "#1E88E5",
+  badgeColor: "#1565C0",
 
   // ── Section 2A: Property Identity & Basic Details ──
   listingCode: "",          // read-only, server-generated — never submitted
@@ -232,6 +237,14 @@ const EMPTY_FORM = {
   petPolicyNotes: "",
   seniorCitizenFeatures: [],
   accessibilityFeatures: [],
+
+  // ── Section 2G: Media & Virtual Experience ──
+  imageDetails: [],
+  virtualTourUrl: "",
+  droneViewUrl: "",
+  floorPlanUrl: "",
+  floorPlanCaption: "",
+  projectConstructionProgressPhotos: [],
 };
 
 // ── Small building blocks ──────────────────────────────────────────────────────
@@ -267,9 +280,9 @@ function Chip({ label, active, onClick }) {
     <button type="button" onClick={onClick}
       className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
       style={{
-        background: active ? "#1E88E5" : "#FFFFFF",
+        background: active ? "#1565C0" : "#FFFFFF",
         color: active ? "#FFFFFF" : "#6B7280",
-        border: `1px solid ${active ? "#1E88E5" : "#E2E8F0"}`,
+        border: `1px solid ${active ? "#1565C0" : "#E2E8F0"}`,
       }}
     >
       {label}
@@ -412,6 +425,14 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       petPolicyNotes: nullToEmpty(editingListing.petPolicyNotes),
       seniorCitizenFeatures: Array.isArray(editingListing.seniorCitizenFeatures) ? editingListing.seniorCitizenFeatures : [],
       accessibilityFeatures: Array.isArray(editingListing.accessibilityFeatures) ? editingListing.accessibilityFeatures : [],
+      imageDetails: Array.isArray(editingListing.imageDetails) ? editingListing.imageDetails : [],
+      virtualTourUrl: nullToEmpty(editingListing.virtualTourUrl),
+      droneViewUrl: nullToEmpty(editingListing.droneViewUrl),
+      floorPlanUrl: nullToEmpty(editingListing.floorPlanUrl),
+      floorPlanCaption: nullToEmpty(editingListing.floorPlanCaption),
+      projectConstructionProgressPhotos: Array.isArray(editingListing.project?.constructionProgressPhotos)
+        ? editingListing.project.constructionProgressPhotos.map((p, i) => ({ ...p, _key: `existing-${i}` }))
+        : [],
     };
   });
   const [availableDevelopers, setAvailableDevelopers] = useState([]);
@@ -420,6 +441,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   const [docUploadError, setDocUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [photoWarnings, setPhotoWarnings] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -497,32 +519,93 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     }
   }
 
+  const imageHashesRef = useRef(new Map()); // url -> perceptual hash, this session only — not persisted
+
   async function handleFilesSelected(e) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     setUploadError("");
+    setPhotoWarnings([]);
     setUploading(true);
 
+    const newWarnings = [];
     for (const file of files) {
       const validationError = validateImageFile(file);
       if (validationError) {
         setUploadError(validationError);
         continue;
       }
+
+      // Best-effort, client-side only — see r2Upload.js for what these can
+      // and can't actually detect.
+      try {
+        const [hash, dims] = await Promise.all([computeImageHash(file), getImageDimensions(file)]);
+        if (looksLikeScreenshot(file, dims.width, dims.height)) {
+          newWarnings.push(`"${file.name}" looks like it might be a screenshot — double-check before publishing.`);
+        }
+        for (const [existingUrl, existingHash] of imageHashesRef.current) {
+          if (hammingDistance(hash, existingHash) <= 5) {
+            newWarnings.push(`"${file.name}" looks like a duplicate (or near-duplicate) of a photo already added.`);
+            break;
+          }
+        }
+        imageHashesRef.current.set(file.name, hash); // keyed by name until we have the real url below
+      } catch {
+        // hashing is a convenience check — never block the actual upload over it
+      }
+
       const result = await uploadToR2(file, "listings");
       if (result.error) {
         setUploadError(result.error);
       } else {
         setForm((f) => ({ ...f, images: [...f.images, result.url] }));
+        const hash = imageHashesRef.current.get(file.name);
+        if (hash) { imageHashesRef.current.delete(file.name); imageHashesRef.current.set(result.url, hash); }
       }
     }
 
+    if (newWarnings.length) setPhotoWarnings(newWarnings);
     setUploading(false);
     e.target.value = ""; // allow re-selecting the same file again later
   }
 
   function removeImage(url) {
-    setForm((f) => ({ ...f, images: f.images.filter((u) => u !== url) }));
+    setForm((f) => ({ ...f, images: f.images.filter((u) => u !== url), imageDetails: f.imageDetails.filter((d) => d.url !== url) }));
+    imageHashesRef.current.delete(url);
+  }
+
+  function moveImage(url, direction) {
+    setForm((f) => {
+      const idx = f.images.indexOf(url);
+      const swapWith = idx + direction;
+      if (swapWith < 0 || swapWith >= f.images.length) return f;
+      const images = [...f.images];
+      [images[idx], images[swapWith]] = [images[swapWith], images[idx]];
+      return { ...f, images };
+    });
+  }
+
+  function makeCoverImage(url) {
+    setForm((f) => ({ ...f, images: [url, ...f.images.filter((u) => u !== url)] }));
+  }
+
+  function missingMandatoryCategories() {
+    const covered = new Set(form.imageDetails.filter((d) => d.roomLabel).map((d) => d.roomLabel));
+    return MANDATORY_ROOM_CATEGORIES.filter((c) => !covered.has(c));
+  }
+
+  function imageDetailFor(f, url) {
+    return f.imageDetails.find((d) => d.url === url) || { url, caption: "", roomLabel: "" };
+  }
+
+  function setImageDetail(url, field, value) {
+    setForm((f) => {
+      const existing = f.imageDetails.find((d) => d.url === url);
+      const imageDetails = existing
+        ? f.imageDetails.map((d) => (d.url === url ? { ...d, [field]: value } : d))
+        : [...f.imageDetails, { url, caption: "", roomLabel: "", [field]: value }];
+      return { ...f, imageDetails };
+    });
   }
 
   function priceLabelFromRaw(raw) {
@@ -677,6 +760,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       constructionQuality: form.projectConstructionQuality,
       structureType: form.projectStructureType,
       keyMaterials: form.projectKeyMaterials,
+      constructionProgressPhotos: form.projectConstructionProgressPhotos,
     };
     if (form.projectMode === "existing" && form.projectId) {
       const { data, error } = await updateProject(form.projectId, projectData);
@@ -731,6 +815,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       projectConstructionQuality: p.constructionQuality ?? "",
       projectStructureType: p.structureType ?? "",
       projectKeyMaterials: p.keyMaterials ?? "",
+      projectConstructionProgressPhotos: (p.constructionProgressPhotos || []).map((cp, i) => ({ ...cp, _key: `sel-${i}` })),
       // If this project already has a linked developer, adopt it too.
       ...(p.developerId ? { developerMode: "existing", developerId: p.developerId } : {}),
     }));
@@ -770,6 +855,45 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     setDocUploading(false);
     if (error) { setDocUploadError(error); return; }
     updateDocument(key, "url", url);
+  }
+
+  // ── Section 2G: construction-progress photos (repeatable rows) ──
+  function addProgressPhoto() {
+    setForm((f) => ({ ...f, projectConstructionProgressPhotos: [...f.projectConstructionProgressPhotos, { _key: `new-${Date.now()}`, url: "", date: new Date().toISOString().slice(0, 10), caption: "" }] }));
+  }
+  function updateProgressPhoto(key, field, value) {
+    setForm((f) => ({ ...f, projectConstructionProgressPhotos: f.projectConstructionProgressPhotos.map((p) => (p._key === key ? { ...p, [field]: value } : p)) }));
+  }
+  function removeProgressPhoto(key) {
+    setForm((f) => ({ ...f, projectConstructionProgressPhotos: f.projectConstructionProgressPhotos.filter((p) => p._key !== key) }));
+  }
+  async function handleProgressPhotoFileSelected(key, e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validationError = validateImageFile(file);
+    if (validationError) { setDocUploadError(validationError); return; }
+    setDocUploadError("");
+    setDocUploading(true);
+    const { url, error } = await uploadToR2(file, "listings");
+    setDocUploading(false);
+    if (error) { setDocUploadError(error); return; }
+    updateProgressPhoto(key, "url", url);
+  }
+
+  // ── Section 2G: floor plan upload (image or PDF, same as project documents) ──
+  async function handleFloorPlanFileSelected(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validationError = validateDocumentFile(file);
+    if (validationError) { setDocUploadError(validationError); return; }
+    setDocUploadError("");
+    setDocUploading(true);
+    const { url, error } = await uploadToR2(file, "documents");
+    setDocUploading(false);
+    if (error) { setDocUploadError(error); return; }
+    set("floorPlanUrl", url);
   }
 
   async function handleDelete() {
@@ -859,7 +983,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
           {form.priceRaw && (
             <p className="text-xs" style={{ color: "#6B7280" }}>
-              Will display as <span className="font-bold" style={{ color: "#1E88E5" }}>{priceLabelFromRaw(form.priceRaw)}</span>
+              Will display as <span className="font-bold" style={{ color: "#1565C0" }}>{priceLabelFromRaw(form.priceRaw)}</span>
             </p>
           )}
 
@@ -901,7 +1025,10 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </Field>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Project Name" hint="Same field as in Project & Developer Information below.">
+              <TextInput value={form.projectName} onChange={(e) => set("projectName", e.target.value)} placeholder="e.g. Skyline Residency" />
+            </Field>
             <Field label="Tower / Block">
               <TextInput value={form.towerBlock} onChange={(e) => set("towerBlock", e.target.value)} placeholder="e.g. Tower B" />
             </Field>
@@ -909,10 +1036,9 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               <TextInput value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder="e.g. 1204" />
             </Field>
           </div>
-          <p className="text-xs" style={{ color: "#6B7280" }}>Project name is set in the "Project &amp; Developer Information" section below.</p>
 
           <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
-            <input type="checkbox" checked={form.unitNumberPublic} onChange={(e) => set("unitNumberPublic", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+            <input type="checkbox" checked={form.unitNumberPublic} onChange={(e) => set("unitNumberPublic", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
             Show unit number on the public listing
           </label>
 
@@ -931,7 +1057,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </Field>
             <div className="flex items-end pb-2.5">
               <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
-                <input type="checkbox" checked={form.servantRoom} onChange={(e) => set("servantRoom", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+                <input type="checkbox" checked={form.servantRoom} onChange={(e) => set("servantRoom", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
                 Servant Room
               </label>
             </div>
@@ -1006,7 +1132,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
           <div className="flex flex-wrap items-center gap-6">
             <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
-              <input type="checkbox" checked={form.priceNegotiable} onChange={(e) => set("priceNegotiable", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+              <input type="checkbox" checked={form.priceNegotiable} onChange={(e) => set("priceNegotiable", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
               Price is negotiable
             </label>
             <div className="flex-1 min-w-[180px]">
@@ -1020,7 +1146,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
           {pricePerSqftPreview() && (
             <p className="text-xs" style={{ color: "#6B7280" }}>
-              Price per sqft: <span className="font-bold" style={{ color: "#1E88E5" }}>₹{pricePerSqftPreview().toLocaleString("en-IN")}/sqft</span>
+              Price per sqft: <span className="font-bold" style={{ color: "#1565C0" }}>₹{pricePerSqftPreview().toLocaleString("en-IN")}/sqft</span>
               {" "}— auto-computed from Price and Area, saved automatically.
             </p>
           )}
@@ -1099,8 +1225,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </div>
             {(emiPreview() || downPaymentPreview()) && (
               <p className="text-xs mt-2" style={{ color: "#6B7280" }}>
-                {downPaymentPreview() && <>Down payment ≈ <span className="font-bold" style={{ color: "#1E88E5" }}>₹{downPaymentPreview().toLocaleString("en-IN")}</span>. </>}
-                {emiPreview() && <>Estimated EMI ≈ <span className="font-bold" style={{ color: "#1E88E5" }}>₹{emiPreview().toLocaleString("en-IN")}/month</span>.</>}
+                {downPaymentPreview() && <>Down payment ≈ <span className="font-bold" style={{ color: "#1565C0" }}>₹{downPaymentPreview().toLocaleString("en-IN")}</span>. </>}
+                {emiPreview() && <>Estimated EMI ≈ <span className="font-bold" style={{ color: "#1565C0" }}>₹{emiPreview().toLocaleString("en-IN")}/month</span>.</>}
               </p>
             )}
           </div>
@@ -1135,7 +1261,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </div>
             {rentalYieldPreview() && (
               <p className="text-xs mt-2" style={{ color: "#6B7280" }}>
-                Estimated rental yield: <span className="font-bold" style={{ color: "#1E88E5" }}>{rentalYieldPreview()}%</span> per year.
+                Estimated rental yield: <span className="font-bold" style={{ color: "#1565C0" }}>{rentalYieldPreview()}%</span> per year.
               </p>
             )}
           </div>
@@ -1203,7 +1329,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={addLandmark} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+              <button type="button" onClick={addLandmark} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>
                 + Add Nearby Landmark
               </button>
             </div>
@@ -1226,7 +1352,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               {[["none", "No Profile"], ["existing", "Select Existing"], ["new", "Add New"]].map(([mode, label]) => (
                 <button key={mode} type="button" onClick={() => set("developerMode", mode)}
                   className="text-xs font-bold px-3 py-1.5 rounded-full"
-                  style={form.developerMode === mode ? { background: "#1E88E5", color: "#FFFFFF" } : { background: "#F1F5F9", color: "#1F2937" }}>
+                  style={form.developerMode === mode ? { background: "#1565C0", color: "#FFFFFF" } : { background: "#F1F5F9", color: "#1F2937" }}>
                   {label}
                 </button>
               ))}
@@ -1255,7 +1381,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                   </Field>
                 )}
                 <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
-                  <input type="checkbox" checked={form.developerVerified} onChange={(e) => set("developerVerified", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+                  <input type="checkbox" checked={form.developerVerified} onChange={(e) => set("developerVerified", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
                   Verified Developer
                 </label>
                 <div className="grid grid-cols-3 gap-4">
@@ -1284,7 +1410,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               {[["none", "No Profile"], ["existing", "Select Existing"], ["new", "Add New"]].map(([mode, label]) => (
                 <button key={mode} type="button" onClick={() => set("projectMode", mode)}
                   className="text-xs font-bold px-3 py-1.5 rounded-full"
-                  style={form.projectMode === mode ? { background: "#1E88E5", color: "#FFFFFF" } : { background: "#F1F5F9", color: "#1F2937" }}>
+                  style={form.projectMode === mode ? { background: "#1565C0", color: "#FFFFFF" } : { background: "#F1F5F9", color: "#1F2937" }}>
                   {label}
                 </button>
               ))}
@@ -1338,7 +1464,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                 </div>
                 {unitsPerAcrePreview() && (
                   <p className="text-xs" style={{ color: "#6B7280" }}>
-                    Density: <span className="font-bold" style={{ color: "#1E88E5" }}>{unitsPerAcrePreview()} units/acre</span> — auto-computed from land area and total units, saved automatically.
+                    Density: <span className="font-bold" style={{ color: "#1565C0" }}>{unitsPerAcrePreview()} units/acre</span> — auto-computed from land area and total units, saved automatically.
                   </p>
                 )}
 
@@ -1392,7 +1518,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                         <button type="button" onClick={() => removeApproval(a._key)} className="text-xs font-bold px-2 py-2.5 rounded-lg hover:opacity-80" style={{ color: "#DC2626" }}>Remove</button>
                       </div>
                     ))}
-                    <button type="button" onClick={addApproval} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>+ Add Approval</button>
+                    <button type="button" onClick={addApproval} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>+ Add Approval</button>
                   </div>
                 </Field>
 
@@ -1412,9 +1538,29 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                         <button type="button" onClick={() => removeDocument(d._key)} className="text-xs font-bold px-2 py-2.5 rounded-lg hover:opacity-80" style={{ color: "#DC2626" }}>Remove</button>
                       </div>
                     ))}
-                    <button type="button" onClick={addDocument} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>+ Add Document</button>
+                    <button type="button" onClick={addDocument} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>+ Add Document</button>
                     {docUploading && <p className="text-xs" style={{ color: "#6B7280" }}>Uploading…</p>}
                     {docUploadError && <p className="text-xs" style={{ color: "#DC2626" }}>{docUploadError}</p>}
+                  </div>
+                </Field>
+
+                <Field label="Construction Progress Photos" hint="Dated photos showing progress over time — shown as a timeline on the property page.">
+                  <div className="space-y-2.5">
+                    {form.projectConstructionProgressPhotos.map((p) => (
+                      <div key={p._key} className="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_1fr_auto] gap-2 sm:items-center">
+                        <TextInput type="date" value={p.date} onChange={(e) => updateProgressPhoto(p._key, "date", e.target.value)} />
+                        <TextInput value={p.caption} onChange={(e) => updateProgressPhoto(p._key, "caption", e.target.value)} placeholder="Caption (e.g. Structure work, 8th floor)" />
+                        <div className="flex gap-2 items-center">
+                          <TextInput value={p.url} onChange={(e) => updateProgressPhoto(p._key, "url", e.target.value)} placeholder="Link, or upload →" />
+                          <label className="text-xs font-bold px-2.5 py-2.5 rounded-lg text-center cursor-pointer shrink-0" style={{ background: "#F1F5F9", color: "#1F2937" }}>
+                            Upload
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleProgressPhotoFileSelected(p._key, e)} />
+                          </label>
+                        </div>
+                        <button type="button" onClick={() => removeProgressPhoto(p._key)} className="text-xs font-bold px-2 py-2.5 rounded-lg hover:opacity-80" style={{ color: "#DC2626" }}>Remove</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={addProgressPhoto} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>+ Add Progress Photo</button>
                   </div>
                 </Field>
 
@@ -1527,7 +1673,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
           <div className="rounded-xl p-4" style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
             <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
-              <input type="checkbox" checked={form.posterVerified} onChange={(e) => setForm((f) => ({ ...f, posterVerified: e.target.checked, verified: e.target.checked }))} className="w-4 h-4 rounded accent-[#1E88E5]" />
+              <input type="checkbox" checked={form.posterVerified} onChange={(e) => setForm((f) => ({ ...f, posterVerified: e.target.checked, verified: e.target.checked }))} className="w-4 h-4 rounded accent-[#1565C0]" />
               Verified {form.postedBy || "Owner"} — shows a "Verified" badge on the public listing
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
@@ -1538,7 +1684,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                 <TextInput value={form.verificationSource} onChange={(e) => set("verificationSource", e.target.value)} placeholder="e.g. Site visit, document review" />
               </Field>
             </div>
-            <button type="button" onClick={markVerifiedToday} className="text-xs font-bold px-3 py-1.5 rounded-lg mt-3" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+            <button type="button" onClick={markVerifiedToday} className="text-xs font-bold px-3 py-1.5 rounded-lg mt-3" style={{ background: "#EFF6FF", color: "#1565C0" }}>
               Mark Verified Today
             </button>
           </div>
@@ -1548,38 +1694,78 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           </p>
         </div>
 
-        {/* ── Photos ── */}
+        {/* ── Photos (Section 2G: Media & Virtual Experience) ── */}
         <div className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Photos</h2>
           <p className="text-xs" style={{ color: "#6B7280" }}>
-            Uploaded directly to Cloudflare R2. The first photo becomes the cover image shown on cards.
+            Uploaded directly to Cloudflare R2. The first photo is the cover image shown on cards — use "Make Cover" to change it.
           </p>
+
+          {/* Count + mandatory-category checklist — a clear warning, not a hard block (some units genuinely lack a category, e.g. no balcony). */}
+          {(() => {
+            const missing = missingMandatoryCategories();
+            const count = form.images.length;
+            if (count >= MIN_PHOTOS && missing.length === 0) {
+              return (
+                <div className="px-3.5 py-2.5 rounded-xl text-xs font-semibold" style={{ background: "#F0FDF4", color: "#16A34A" }}>
+                  ✓ {count} photo{count === 1 ? "" : "s"}, all mandatory categories covered.
+                </div>
+              );
+            }
+            return (
+              <div className="px-3.5 py-2.5 rounded-xl text-xs" style={{ background: "#FFFBEB", color: "#92400E" }}>
+                <p className="font-semibold">
+                  {count} of {MIN_PHOTOS}–{MAX_RECOMMENDED_PHOTOS} recommended photos{count < MIN_PHOTOS ? ` (${MIN_PHOTOS - count} more recommended)` : ""}.
+                </p>
+                {missing.length > 0 && <p className="mt-0.5">Missing room labels for: {missing.join(", ")}. Set a Room Label on at least one photo per category below.</p>}
+              </div>
+            );
+          })()}
 
           {uploadError && (
             <div className="px-3.5 py-2.5 rounded-xl text-xs font-semibold" style={{ background: "#FEE2E2", color: "#DC2626" }}>{uploadError}</div>
           )}
+          {photoWarnings.length > 0 && (
+            <div className="px-3.5 py-2.5 rounded-xl text-xs space-y-1" style={{ background: "#FFFBEB", color: "#92400E" }}>
+              {photoWarnings.map((w, i) => <p key={i}>⚠ {w}</p>)}
+            </div>
+          )}
 
-          <div className="flex flex-wrap gap-3">
-            {form.images.map((url) => (
-              <div key={url} className="relative w-28 h-28 rounded-xl overflow-hidden group" style={{ border: "1px solid #E2E8F0" }}>
-                <img src={url} alt="" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removeImage(url)}
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                  style={{ background: "rgba(0,0,0,0.7)", color: "#FFFFFF" }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {form.images.map((url, idx) => {
+              const detail = imageDetailFor(form, url);
+              return (
+                <div key={url} className="rounded-xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+                  <div className="relative w-full aspect-square group">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    {idx === 0 && (
+                      <span className="absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#1565C0", color: "#FFFFFF" }}>COVER</span>
+                    )}
+                    <button type="button" onClick={() => removeImage(url)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{ background: "rgba(0,0,0,0.7)", color: "#FFFFFF" }}>×</button>
+                    <div className="absolute bottom-1 left-1 right-1 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button type="button" disabled={idx === 0} onClick={() => moveImage(url, -1)} className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold disabled:opacity-30" style={{ background: "rgba(0,0,0,0.7)", color: "#FFFFFF" }}>‹</button>
+                      {idx !== 0 && (
+                        <button type="button" onClick={() => makeCoverImage(url)} className="text-[9px] font-bold px-1.5 rounded" style={{ background: "rgba(0,0,0,0.7)", color: "#FFFFFF" }}>Cover</button>
+                      )}
+                      <button type="button" disabled={idx === form.images.length - 1} onClick={() => moveImage(url, 1)} className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold disabled:opacity-30" style={{ background: "rgba(0,0,0,0.7)", color: "#FFFFFF" }}>›</button>
+                    </div>
+                  </div>
+                  <div className="p-1.5 space-y-1">
+                    <Select value={detail.roomLabel} onChange={(e) => setImageDetail(url, "roomLabel", e.target.value)}>
+                      <option value="">Room label…</option>
+                      {ROOM_LABEL_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </Select>
+                    <TextInput value={detail.caption} onChange={(e) => setImageDetail(url, "caption", e.target.value)} placeholder="Caption (optional)" />
+                  </div>
+                </div>
+              );
+            })}
 
-            <label
-              className="w-28 h-28 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
-              style={{ border: "1.5px dashed #E2E8F0", color: "#6B7280" }}
-            >
+            <label className="rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors aspect-square" style={{ border: "1.5px dashed #E2E8F0", color: "#6B7280" }}>
               {uploading ? (
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1E88E5" }}>
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1565C0" }}>
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
                   <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 </svg>
@@ -1594,6 +1780,34 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple onChange={handleFilesSelected} className="hidden" disabled={uploading} />
             </label>
           </div>
+        </div>
+
+        {/* ── Virtual Experience (Section 2G) ── */}
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Virtual Experience &amp; Floor Plan</h2>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>All optional. Project-wide Master Plan / Tower Location Map documents live under Project &amp; Developer Information above.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="360° Virtual Tour Link" hint="Matterport, Kuula, or similar.">
+              <TextInput value={form.virtualTourUrl} onChange={(e) => set("virtualTourUrl", e.target.value)} placeholder="https://my.matterport.com/show/?m=..." />
+            </Field>
+            <Field label="Drone View Link" hint="Only where legally permitted to fly/film.">
+              <TextInput value={form.droneViewUrl} onChange={(e) => set("droneViewUrl", e.target.value)} placeholder="https://youtube.com/watch?v=..." />
+            </Field>
+          </div>
+          <Field label="Unit Floor Plan" hint="This unit's own layout — upload an image/PDF or paste a link.">
+            <div className="flex gap-2 items-center flex-wrap">
+              <TextInput value={form.floorPlanUrl} onChange={(e) => set("floorPlanUrl", e.target.value)} placeholder="Link, or upload →" />
+              <label className="text-xs font-bold px-3 py-2.5 rounded-lg text-center cursor-pointer shrink-0" style={{ background: "#F1F5F9", color: "#1F2937" }}>
+                Upload
+                <input type="file" accept="application/pdf,image/*" className="hidden" onChange={handleFloorPlanFileSelected} />
+              </label>
+            </div>
+          </Field>
+          <Field label="Floor Plan Caption">
+            <TextInput value={form.floorPlanCaption} onChange={(e) => set("floorPlanCaption", e.target.value)} placeholder="e.g. 3BHK · 1450 sqft, with dimensions" />
+          </Field>
         </div>
 
         {/* ── Videos ── */}
@@ -1611,7 +1825,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           <div className="flex gap-2">
             <TextInput value={videoDraft} onChange={(e) => setVideoDraft(e.target.value)} placeholder="https://youtube.com/watch?v=..."
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addVideoUrl(); } }} />
-            <button type="button" onClick={addVideoUrl} className="text-xs font-bold px-4 rounded-xl shrink-0" style={{ background: "#1E88E5", color: "#FFFFFF" }}>Add</button>
+            <button type="button" onClick={addVideoUrl} className="text-xs font-bold px-4 rounded-xl shrink-0" style={{ background: "#1565C0", color: "#FFFFFF" }}>Add</button>
           </div>
         </div>
 
@@ -1652,7 +1866,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                   <button type="button" onClick={() => removeAmenityDetail(a._key)} className="text-xs font-bold px-2 py-2.5 rounded-lg hover:opacity-80" style={{ color: "#DC2626" }}>Remove</button>
                 </div>
               ))}
-              <button type="button" onClick={addAmenityDetail} disabled={form.amenities.length === 0} className="text-xs font-bold px-3 py-2 rounded-lg disabled:opacity-40" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+              <button type="button" onClick={addAmenityDetail} disabled={form.amenities.length === 0} className="text-xs font-bold px-3 py-2 rounded-lg disabled:opacity-40" style={{ background: "#EFF6FF", color: "#1565C0" }}>
                 + Add Detail
               </button>
             </div>
@@ -1776,7 +1990,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
           <div className="flex flex-wrap gap-6">
             <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
-              <input type="checkbox" checked={form.featured} onChange={(e) => set("featured", e.target.checked)} className="w-4 h-4 rounded accent-[#1E88E5]" />
+              <input type="checkbox" checked={form.featured} onChange={(e) => set("featured", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
               Featured listing
             </label>
           </div>
@@ -1808,7 +2022,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           <div className="flex gap-3">
             <button type="submit" disabled={saving || uploading}
               className="px-6 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
-              style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+              style={{ background: "#1565C0", color: "#FFFFFF" }}>
               {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Listing"}
             </button>
             <button type="button" onClick={() => onNavigate("listings")}

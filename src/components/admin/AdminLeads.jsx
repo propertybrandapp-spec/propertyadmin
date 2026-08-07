@@ -6,7 +6,7 @@ import { fetchAdminLeads, updateLeadStage, deleteLead } from "../../lib/leads";
 const STAGES = ["New", "Contacted", "Site Visit", "Negotiation", "Closed Won", "Closed Lost"];
 
 const STAGE_STYLES = {
-  "New": { bg: "#EFF6FF", color: "#1E88E5" },
+  "New": { bg: "#EFF6FF", color: "#1565C0" },
   "Contacted": { bg: "#FEF3C7", color: "#F59E0B" },
   "Site Visit": { bg: "#F3E8FF", color: "#a855f7" },
   "Negotiation": { bg: "#FEF9C3", color: "#ca8a04" },
@@ -43,18 +43,18 @@ function LeadDrawer({ lead, onClose, onStageChange, onDelete, onNavigate }) {
             <button
               onClick={() => onNavigate("listings-form", lead.listing)}
               className="w-full text-left flex items-center gap-3 mb-6 p-3 rounded-xl transition-colors"
-              style={{ background: "#EFF6FF", border: "1px solid #1E88E5" }}
+              style={{ background: "#EFF6FF", border: "1px solid #1565C0" }}
             >
               <img src={lead.listing.images?.[0]} alt={lead.listing.title} className="w-14 h-14 rounded-lg object-cover shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#1E88E5" }}>Property</p>
+                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#1565C0" }}>Property</p>
                 <p className="text-sm font-bold truncate" style={{ color: "#1F2937" }}>{lead.listing.title}</p>
                 <p className="text-xs truncate" style={{ color: "#6B7280" }}>
                   {lead.listing.location} · {lead.listing.price}
                   {lead.listing.bhkLabel ? ` · ${lead.listing.bhkLabel}` : ""}{lead.listing.area ? ` · ${lead.listing.area}` : ""}
                 </p>
               </div>
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="#1E88E5" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="#1565C0" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -77,11 +77,11 @@ function LeadDrawer({ lead, onClose, onStageChange, onDelete, onNavigate }) {
 
         {/* Real actions — actually opens the phone/email app */}
         <div className="flex gap-2 mb-6">
-          <a href={`tel:${lead.phone}`} className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold" style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+          <a href={`tel:${lead.phone}`} className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold" style={{ background: "#1565C0", color: "#FFFFFF" }}>
             Call Now
           </a>
           {lead.email && (
-            <a href={`mailto:${lead.email}`} className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+            <a href={`mailto:${lead.email}`} className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold" style={{ background: "#EFF6FF", color: "#1565C0" }}>
               Send Email
             </a>
           )}
@@ -187,9 +187,9 @@ export default function AdminLeads({ onNavigate, onLogout, adminProfile }) {
             <button key={tab} onClick={() => setActiveFilter(tab)}
               className="shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all"
               style={{
-                background: activeFilter === tab ? "#1E88E5" : "#FFFFFF",
+                background: activeFilter === tab ? "#1565C0" : "#FFFFFF",
                 color: activeFilter === tab ? "#FFFFFF" : "#6B7280",
-                border: `1px solid ${activeFilter === tab ? "#1E88E5" : "#E2E8F0"}`,
+                border: `1px solid ${activeFilter === tab ? "#1565C0" : "#E2E8F0"}`,
               }}>
               {tab}
               <span className="text-[10px] font-bold px-1.5 rounded-full"
@@ -203,7 +203,7 @@ export default function AdminLeads({ onNavigate, onLogout, adminProfile }) {
         <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           {loading ? (
             <div className="flex items-center justify-center py-16 gap-3">
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1E88E5" }}>
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1565C0" }}>
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
                 <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
               </svg>

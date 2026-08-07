@@ -11,7 +11,7 @@ const STATUS_STYLES = {
 const TIER_STYLES = {
   Gold: { bg: "#FEF3C7", color: "#F59E0B" },
   Silver: { bg: "#F1F5F9", color: "#6B7280" },
-  Associate: { bg: "#EFF6FF", color: "#1E88E5" },
+  Associate: { bg: "#EFF6FF", color: "#1565C0" },
 };
 const FILTER_TABS = ["All", "Pending", "Verified", "Suspended"];
 
@@ -35,12 +35,12 @@ function AddAgentForm({ onClose, onSaved }) {
   }
 
   return (
-    <div className="rounded-2xl p-5 space-y-3" style={{ background: "#FFFFFF", border: "1.5px solid #1E88E5" }}>
+    <div className="rounded-2xl p-5 space-y-3" style={{ background: "#FFFFFF", border: "1.5px solid #1565C0" }}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold" style={{ color: "#1F2937" }}>Add Agent</h3>
         <button onClick={onClose} className="text-xs font-semibold" style={{ color: "#6B7280" }}>Cancel</button>
       </div>
-      {error && <p className="text-xs font-semibold" style={{ color: "#1E88E5" }}>{error}</p>}
+      {error && <p className="text-xs font-semibold" style={{ color: "#1565C0" }}>{error}</p>}
       <div className="grid grid-cols-2 gap-3">
         <input placeholder="Full Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
           className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
@@ -59,7 +59,7 @@ function AddAgentForm({ onClose, onSaved }) {
       </div>
       <button onClick={handleSave} disabled={saving}
         className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60"
-        style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+        style={{ background: "#1565C0", color: "#FFFFFF" }}>
         {saving ? "Adding..." : "Add Agent"}
       </button>
     </div>
@@ -77,7 +77,7 @@ function AgentDrawer({ agent, onClose, onStatusChange }) {
         </div>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold" style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+          <div className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold" style={{ background: "#1565C0", color: "#FFFFFF" }}>
             {agent.name.split(" ").map(w => w[0]).slice(0, 2).join("")}
           </div>
           <div>
@@ -110,7 +110,7 @@ function AgentDrawer({ agent, onClose, onStatusChange }) {
             </button>
           )}
           {agent.status === "Suspended" && (
-            <button onClick={() => onStatusChange(agent, "Verified")} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+            <button onClick={() => onStatusChange(agent, "Verified")} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#EFF6FF", color: "#1565C0" }}>
               Reinstate
             </button>
           )}
@@ -170,9 +170,9 @@ export default function AdminAgents({ onNavigate, onLogout, adminProfile }) {
               <button key={tab} onClick={() => setActiveFilter(tab)}
                 className="shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all"
                 style={{
-                  background: activeFilter === tab ? "#1E88E5" : "#FFFFFF",
+                  background: activeFilter === tab ? "#1565C0" : "#FFFFFF",
                   color: activeFilter === tab ? "#FFFFFF" : "#6B7280",
-                  border: `1px solid ${activeFilter === tab ? "#1E88E5" : "#E2E8F0"}`,
+                  border: `1px solid ${activeFilter === tab ? "#1565C0" : "#E2E8F0"}`,
                 }}>
                 {tab}
                 <span className="text-[10px] font-bold px-1.5 rounded-full"
@@ -185,7 +185,7 @@ export default function AdminAgents({ onNavigate, onLogout, adminProfile }) {
           {!showAddForm && (
             <button onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+              style={{ background: "#1565C0", color: "#FFFFFF" }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
@@ -200,7 +200,7 @@ export default function AdminAgents({ onNavigate, onLogout, adminProfile }) {
 
         {loading ? (
           <div className="flex items-center justify-center py-16 gap-3">
-            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1E88E5" }}>
+            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1565C0" }}>
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
               <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
@@ -220,7 +220,7 @@ export default function AdminAgents({ onNavigate, onLogout, adminProfile }) {
               <div key={agent.id} className="rounded-2xl p-5 transition-opacity" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", opacity: busyIds.includes(agent.id) ? 0.5 : 1 }}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: "#1565C0", color: "#FFFFFF" }}>
                       {agent.name.split(" ").map(w => w[0]).slice(0, 2).join("")}
                     </div>
                     <div className="min-w-0">
@@ -242,7 +242,7 @@ export default function AdminAgents({ onNavigate, onLogout, adminProfile }) {
 
                 <div className="flex gap-2">
                   <button onClick={() => setViewingAgent(agent)}
-                    className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+                    className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: "#EFF6FF", color: "#1565C0" }}>
                     View Profile
                   </button>
                   {agent.status === "Suspended" ? (

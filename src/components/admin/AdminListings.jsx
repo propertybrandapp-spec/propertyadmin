@@ -89,7 +89,7 @@ function ActionMenu({ listing, onEdit, onApprove, onFlag, onDelete }) {
               <div className="flex gap-2">
                 <button
                   onClick={() => { setOpen(false); setConfirmingDelete(false); onDelete(listing); }}
-                  className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: "#1E88E5", color: "#FFFFFF" }}
+                  className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: "#1565C0", color: "#FFFFFF" }}
                 >
                   Yes, delete
                 </button>
@@ -232,9 +232,9 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
           <button
             onClick={() => onNavigate("listings-form", null)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={{ background: "#1E88E5", color: "#FFFFFF" }}
-            onMouseEnter={(e) => e.currentTarget.style.background = "#1565C0"}
-            onMouseLeave={(e) => e.currentTarget.style.background = "#1E88E5"}
+            style={{ background: "#1565C0", color: "#FFFFFF" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "#0D47A1"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "#1565C0"}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -251,9 +251,9 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
               onClick={() => setActiveFilter(tab)}
               className="shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all"
               style={{
-                background: activeFilter === tab ? "#1E88E5" : "#FFFFFF",
+                background: activeFilter === tab ? "#1565C0" : "#FFFFFF",
                 color: activeFilter === tab ? "#FFFFFF" : "#6B7280",
-                border: `1px solid ${activeFilter === tab ? "#1E88E5" : "#E2E8F0"}`,
+                border: `1px solid ${activeFilter === tab ? "#1565C0" : "#E2E8F0"}`,
               }}
             >
               {tab}
@@ -274,13 +274,13 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
         {selected.length > 0 && (
           <div
             className="flex items-center justify-between px-4 py-3 rounded-xl"
-            style={{ background: "#EFF6FF", border: "1px solid #1E88E5" }}
+            style={{ background: "#EFF6FF", border: "1px solid #1565C0" }}
           >
-            <span className="text-sm font-semibold" style={{ color: "#1E88E5" }}>
+            <span className="text-sm font-semibold" style={{ color: "#1565C0" }}>
               {selected.length} listing{selected.length > 1 ? "s" : ""} selected
             </span>
             <div className="flex gap-2">
-              <button onClick={handleBulkApprove} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+              <button onClick={handleBulkApprove} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#1565C0", color: "#FFFFFF" }}>
                 Approve Selected
               </button>
               <button onClick={handleBulkDelete} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#FFFFFF", color: "#DC2626", border: "1px solid #DC2626" }}>
@@ -294,7 +294,7 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
         <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           {loading ? (
             <div className="flex items-center justify-center py-16 gap-3">
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1E88E5" }}>
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1565C0" }}>
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
                 <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
               </svg>
@@ -310,7 +310,7 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
                         type="checkbox"
                         checked={selected.length === filtered.length && filtered.length > 0}
                         onChange={toggleSelectAll}
-                        className="w-4 h-4 rounded cursor-pointer accent-[#1E88E5]"
+                        className="w-4 h-4 rounded cursor-pointer accent-[#1565C0]"
                       />
                     </th>
                     <th className="px-3 py-3.5 text-left font-bold" style={{ color: "#1F2937" }}>Property</th>
@@ -337,7 +337,7 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
                           type="checkbox"
                           checked={selected.includes(listing.id)}
                           onChange={() => toggleSelect(listing.id)}
-                          className="w-4 h-4 rounded cursor-pointer accent-[#1E88E5]"
+                          className="w-4 h-4 rounded cursor-pointer accent-[#1565C0]"
                         />
                       </td>
                       <td className="px-3 py-3.5">
@@ -392,7 +392,7 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
               <button
                 onClick={() => onNavigate("listings-form", null)}
                 className="text-xs font-bold px-4 py-2 rounded-lg"
-                style={{ background: "#1E88E5", color: "#FFFFFF" }}
+                style={{ background: "#1565C0", color: "#FFFFFF" }}
               >
                 Add Listing
               </button>

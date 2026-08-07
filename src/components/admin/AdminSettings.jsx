@@ -67,7 +67,7 @@ export default function AdminSettings({ onNavigate, onLogout, adminProfile }) {
               className="px-3 py-2 rounded-lg text-xs font-semibold"
               style={{
                 background: pwMessage.type === "success" ? "#F0FDF4" : "#FEE2E2",
-                color: pwMessage.type === "success" ? "#15803D" : "#1E88E5",
+                color: pwMessage.type === "success" ? "#15803D" : "#1565C0",
               }}
             >
               {pwMessage.text}
@@ -100,7 +100,7 @@ export default function AdminSettings({ onNavigate, onLogout, adminProfile }) {
             type="submit"
             disabled={saving}
             className="text-sm font-bold px-4 py-2.5 rounded-xl"
-            style={{ background: "#1E88E5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}
+            style={{ background: "#1565C0", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}
           >
             {saving ? "Updating..." : "Update password"}
           </button>
@@ -121,7 +121,7 @@ export default function AdminSettings({ onNavigate, onLogout, adminProfile }) {
                   checked={prefs[item.key]}
                   onChange={() => togglePref(item.key)}
                   className="w-4 h-4"
-                  style={{ accentColor: "#1E88E5" }}
+                  style={{ accentColor: "#1565C0" }}
                 />
               </label>
             ))}

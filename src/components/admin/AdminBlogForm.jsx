@@ -192,7 +192,7 @@ export default function AdminBlogForm({ onNavigate, onLogout, adminProfile, edit
           <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Tags</h2>
           <div className="flex flex-wrap gap-2">
             {form.tags.map((t) => (
-              <span key={t} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+              <span key={t} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "#EFF6FF", color: "#1565C0" }}>
                 {t}
                 <button type="button" onClick={() => removeTag(t)} className="font-bold">×</button>
               </span>
@@ -210,7 +210,7 @@ export default function AdminBlogForm({ onNavigate, onLogout, adminProfile, edit
         <div className="flex items-center justify-between flex-wrap gap-3 pb-8">
           <div className="flex gap-3">
             <button type="submit" disabled={saving || uploading}
-              className="px-6 py-3 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+              className="px-6 py-3 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#1565C0", color: "#FFFFFF" }}>
               {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Article"}
             </button>
             <button type="button" onClick={() => onNavigate("blog")} className="px-6 py-3 rounded-xl text-sm font-bold" style={{ background: "#F1F5F9", color: "#6B7280" }}>

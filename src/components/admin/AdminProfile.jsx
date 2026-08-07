@@ -48,7 +48,7 @@ export default function AdminProfile({ onNavigate, onLogout, adminProfile, onPro
         <div className="rounded-2xl p-6 flex items-center gap-4" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           <div
             className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-            style={{ background: "#1E88E5", color: "#FFFFFF" }}
+            style={{ background: "#1565C0", color: "#FFFFFF" }}
           >
             {adminProfile?.avatar_initials || adminProfile?.full_name?.charAt(0) || "A"}
           </div>
@@ -67,7 +67,7 @@ export default function AdminProfile({ onNavigate, onLogout, adminProfile, onPro
               className="px-3 py-2 rounded-lg text-xs font-semibold"
               style={{
                 background: message.type === "success" ? "#F0FDF4" : "#FEE2E2",
-                color: message.type === "success" ? "#15803D" : "#1E88E5",
+                color: message.type === "success" ? "#15803D" : "#1565C0",
               }}
             >
               {message.text}
@@ -101,7 +101,7 @@ export default function AdminProfile({ onNavigate, onLogout, adminProfile, onPro
             type="submit"
             disabled={saving}
             className="text-sm font-bold px-4 py-2.5 rounded-xl"
-            style={{ background: "#1E88E5", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}
+            style={{ background: "#1565C0", color: "#FFFFFF", opacity: saving ? 0.6 : 1 }}
           >
             {saving ? "Saving..." : "Save changes"}
           </button>
@@ -109,7 +109,7 @@ export default function AdminProfile({ onNavigate, onLogout, adminProfile, onPro
 
         <p className="text-xs" style={{ color: "#6B7280" }}>
           Need to change your password? Go to{" "}
-          <button onClick={() => onNavigate("settings")} className="font-semibold" style={{ color: "#1E88E5" }}>
+          <button onClick={() => onNavigate("settings")} className="font-semibold" style={{ color: "#1565C0" }}>
             Settings
           </button>.
         </p>

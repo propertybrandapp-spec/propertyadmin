@@ -247,7 +247,7 @@ function denormalizeInvestmentOpportunity(o) {
     city: o.city || "Bhubaneswar",
     area: o.area,
     tag: o.tag || null,
-    tag_color: o.tagColor || "bg-blue-100 text-[#1E88E5]",
+    tag_color: o.tagColor || "bg-blue-100 text-[#1565C0]",
     appreciation: o.appreciation || null,
     rental_yield: o.rentalYield || null,
     price_range: o.priceRange || null,

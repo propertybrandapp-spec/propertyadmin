@@ -6,13 +6,13 @@ import AdminLayout from "./AdminLayout";
 
 // Static visual config (icon/color) — paired with live counts fetched below.
 const KPI_CONFIG = [
-  { key: "totalListings", label: "Total Listings", icon: "🏠", color: "#1E88E5", bg: "#EFF6FF" },
+  { key: "totalListings", label: "Total Listings", icon: "🏠", color: "#1565C0", bg: "#EFF6FF" },
   { key: "activeLeads", label: "Active Leads", icon: "📞", color: "#F59E0B", bg: "#FEF3C7" },
   { key: "revenue", label: "Revenue (MTD)", icon: "💰", color: "#4ade80", bg: "#F0FDF4" },
   { key: "pendingApprovals", label: "Pending Approvals", icon: "⏳", color: "#DC2626", bg: "#FEE2E2" },
 ];
 
-const TYPE_COLORS = { Apartment: "#1E88E5", Villa: "#F59E0B", Plot: "#1E88E5", Commercial: "#4ade80" };
+const TYPE_COLORS = { Apartment: "#1565C0", Villa: "#F59E0B", Plot: "#1565C0", Commercial: "#4ade80" };
 
 // Turns the period-filter label into a start date to filter queries from.
 function getPeriodStart(period) {
@@ -45,7 +45,7 @@ function MiniBarChart({ data, labels }) {
               className="w-full rounded-t-md transition-all duration-300 group-hover:opacity-80"
               style={{
                 height: `${(val / max) * 100}%`,
-                background: i === data.length - 1 ? "#1E88E5" : "#EFF6FF",
+                background: i === data.length - 1 ? "#1565C0" : "#EFF6FF",
               }}
             />
           </div>
@@ -172,7 +172,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
       (recentLeadsData || []).map((l) => ({
         text: `New lead — ${l.name}${l.interest ? `, ${l.interest}` : ""}`,
         time: new Date(l.created_at).toLocaleString(),
-        color: l.stage === "New" ? "#1E88E5" : "#4ade80",
+        color: l.stage === "New" ? "#1565C0" : "#4ade80",
       }))
     );
 
@@ -226,9 +226,9 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
                 onClick={() => setPeriod(p)}
                 className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
-                  background: period === p ? "#1E88E5" : "#FFFFFF",
+                  background: period === p ? "#1565C0" : "#FFFFFF",
                   color: period === p ? "#FFFFFF" : "#6B7280",
-                  border: `1px solid ${period === p ? "#1E88E5" : "#E2E8F0"}`,
+                  border: `1px solid ${period === p ? "#1565C0" : "#E2E8F0"}`,
                 }}
               >
                 {p}
@@ -276,7 +276,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
                 <h3 className="text-base font-bold" style={{ color: "#1F2937" }}>Listings Growth</h3>
                 <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>Monthly new listings added</p>
               </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#EFF6FF", color: "#1565C0" }}>
                 +{monthlyGrowth.thisMonth} this month
               </span>
             </div>
@@ -304,7 +304,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
           <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
             <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid #E2E8F0" }}>
               <h3 className="text-base font-bold" style={{ color: "#1F2937" }}>Recent Activity</h3>
-              <button onClick={() => onNavigate("leads")} className="text-xs font-semibold" style={{ color: "#1E88E5" }}>View all</button>
+              <button onClick={() => onNavigate("leads")} className="text-xs font-semibold" style={{ color: "#1565C0" }}>View all</button>
             </div>
             {recentActivity.length === 0 ? (
               <p className="text-sm py-10 text-center" style={{ color: "#6B7280" }}>{loading ? "Loading..." : "No recent activity yet"}</p>
@@ -334,7 +334,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
               <button
                 onClick={() => onNavigate("listings")}
                 className="text-xs font-semibold"
-                style={{ color: "#1E88E5" }}
+                style={{ color: "#1565C0" }}
               >
                 View all
               </button>
@@ -360,7 +360,7 @@ export default function AdminDashboard({ onNavigate, onLogout, adminProfile }) {
                       <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{item.location} · {item.price}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs font-bold" style={{ color: "#1E88E5" }}>{item.views} views</p>
+                      <p className="text-xs font-bold" style={{ color: "#1565C0" }}>{item.views} views</p>
                       <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{item.leads} leads</p>
                     </div>
                   </div>

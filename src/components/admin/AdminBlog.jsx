@@ -78,7 +78,7 @@ export default function AdminBlog({ onNavigate, onLogout, adminProfile }) {
           </div>
           <button onClick={() => onNavigate("blog-form", null)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-            style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+            style={{ background: "#1565C0", color: "#FFFFFF" }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
@@ -91,9 +91,9 @@ export default function AdminBlog({ onNavigate, onLogout, adminProfile }) {
             <button key={tab} onClick={() => setActiveFilter(tab)}
               className="shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all"
               style={{
-                background: activeFilter === tab ? "#1E88E5" : "#FFFFFF",
+                background: activeFilter === tab ? "#1565C0" : "#FFFFFF",
                 color: activeFilter === tab ? "#FFFFFF" : "#6B7280",
-                border: `1px solid ${activeFilter === tab ? "#1E88E5" : "#E2E8F0"}`,
+                border: `1px solid ${activeFilter === tab ? "#1565C0" : "#E2E8F0"}`,
               }}>
               {tab}
               <span className="text-[10px] font-bold px-1.5 rounded-full"
@@ -107,7 +107,7 @@ export default function AdminBlog({ onNavigate, onLogout, adminProfile }) {
         <div className="rounded-2xl overflow-hidden" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           {loading ? (
             <div className="flex items-center justify-center py-16 gap-3">
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1E88E5" }}>
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1565C0" }}>
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
                 <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
               </svg>
@@ -121,7 +121,7 @@ export default function AdminBlog({ onNavigate, onLogout, adminProfile }) {
                 {posts.length === 0 ? "Write your first article to populate the public Blog & Insights page." : "Try a different filter or search."}
               </p>
               {posts.length === 0 && (
-                <button onClick={() => onNavigate("blog-form", null)} className="text-xs font-bold px-4 py-2 rounded-lg" style={{ background: "#1E88E5", color: "#FFFFFF" }}>
+                <button onClick={() => onNavigate("blog-form", null)} className="text-xs font-bold px-4 py-2 rounded-lg" style={{ background: "#1565C0", color: "#FFFFFF" }}>
                   Write Article
                 </button>
               )}
@@ -160,7 +160,7 @@ export default function AdminBlog({ onNavigate, onLogout, adminProfile }) {
                             {post.status === "Published" ? "Unpublish" : "Publish"}
                           </button>
                           <button onClick={() => onNavigate("blog-form", post)}
-                            className="text-xs font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "#EFF6FF", color: "#1E88E5" }}>
+                            className="text-xs font-bold px-2.5 py-1.5 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>
                             Edit
                           </button>
                           <button onClick={() => handleDelete(post)}

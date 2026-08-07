@@ -75,6 +75,8 @@ function toProject(row) {
     constructionQuality: row.construction_quality || "",
     structureType: row.structure_type || "",
     keyMaterials: row.key_materials || "",
+    // ── Section 2G: construction-progress photos ──
+    constructionProgressPhotos: Array.isArray(row.construction_progress_photos) ? row.construction_progress_photos : [],
   };
 }
 
@@ -102,6 +104,10 @@ function fromProject(p) {
     construction_quality: p.constructionQuality || null,
     structure_type: p.structureType || null,
     key_materials: p.keyMaterials || null,
+    // ── Section 2G: construction-progress photos ──
+    construction_progress_photos: Array.isArray(p.constructionProgressPhotos)
+      ? p.constructionProgressPhotos.map(({ url, date, caption }) => ({ url, date, caption }))
+      : [],
     // note: units_per_acre is DB-generated — never written here
   };
 }

@@ -219,13 +219,22 @@ export function normalizeListing(row) {
     seniorCitizenFeatures: row.senior_citizen_features || [],
     accessibilityFeatures: row.accessibility_features || [],
 
+    // ── Section 2G: Media & Virtual Experience ──
+    // `images` itself (below) is unchanged — imageDetails layers optional
+    // caption/roomLabel onto whichever photos have them, matched by url.
+    imageDetails: Array.isArray(row.image_details) ? row.image_details : [],
+    virtualTourUrl: row.virtual_tour_url || null,
+    droneViewUrl: row.drone_view_url || null,
+    floorPlanUrl: row.floor_plan_url || null,
+    floorPlanCaption: row.floor_plan_caption || null,
+
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     videoUrls: row.video_urls || [],
     googleMapsLink: row.google_maps_link || null,
     latitude: row.latitude != null ? Number(row.latitude) : null,
     longitude: row.longitude != null ? Number(row.longitude) : null,
     badge: row.badge || null,
-    badgeColor: row.badge_color || "#1E88E5",
+    badgeColor: row.badge_color || "#1565C0",
     description: row.description || "",
     views: row.views || 0,
     createdAt: row.created_at,
@@ -432,6 +441,16 @@ export function denormalizeListing(f) {
     pet_policy_notes: f.petPolicyNotes || null,
     senior_citizen_features: Array.isArray(f.seniorCitizenFeatures) ? f.seniorCitizenFeatures : [],
     accessibility_features: Array.isArray(f.accessibilityFeatures) ? f.accessibilityFeatures : [],
+
+    // ── Section 2G: Media & Virtual Experience ──
+    // Strip client-only `_key` from image_details before saving.
+    image_details: Array.isArray(f.imageDetails)
+      ? f.imageDetails.filter((d) => d.url).map(({ url, caption, roomLabel }) => ({ url, caption, roomLabel }))
+      : [],
+    virtual_tour_url: f.virtualTourUrl || null,
+    drone_view_url: f.droneViewUrl || null,
+    floor_plan_url: f.floorPlanUrl || null,
+    floor_plan_caption: f.floorPlanCaption || null,
 
     updated_at: new Date().toISOString(),
   };

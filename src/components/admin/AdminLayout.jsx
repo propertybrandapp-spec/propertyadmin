@@ -94,7 +94,7 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
             <span className="flex items-center gap-2">
               <img src="/logo-icon.webp" alt="PropertyBrands" className="w-8 h-8 rounded-full object-cover" />
               <span className="font-extrabold text-lg tracking-tight" style={{ color: "#1F2937" }}>
-                property<span style={{ color: "#1E88E5" }}>Brands</span>
+                property<span style={{ color: "#1565C0" }}>Brands</span>
               </span>
             </span>
           )}
@@ -117,7 +117,7 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
           <div className="px-5 pt-4 pb-2">
             <span
               className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full"
-              style={{ background: "#EFF6FF", color: "#1E88E5", border: "1px solid #1E88E5" }}
+              style={{ background: "#EFF6FF", color: "#1565C0", border: "1px solid #1565C0" }}
             >
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 1L3 5v6c0 5 3.5 7.5 7 9 3.5-1.5 7-4 7-9V5l-7-4zm0 2.2l5 2.86v4.94c0 3.7-2.5 5.7-5 6.9-2.5-1.2-5-3.2-5-6.9V6.06l5-2.86z" />
@@ -137,7 +137,7 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
                 onClick={() => { onNavigate(item.id); setMobileOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${collapsed ? "justify-center" : ""}`}
                 style={{
-                  background: active ? "#1E88E5" : "transparent",
+                  background: active ? "#1565C0" : "transparent",
                   color: active ? "#FFFFFF" : "#6B7280",
                 }}
                 onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#F1F5F9"; }}
@@ -290,7 +290,7 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
             {unreadCount > 0 && (
               <span
                 className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
-                style={{ background: "#1E88E5", color: "#FFFFFF" }}
+                style={{ background: "#1565C0", color: "#FFFFFF" }}
               >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
@@ -304,7 +304,7 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
               <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #E2E8F0" }}>
                 <p className="text-sm font-bold" style={{ color: "#1F2937" }}>Notifications</p>
                 {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-xs font-semibold" style={{ color: "#1E88E5" }}>
+                  <button onClick={markAllRead} className="text-xs font-semibold" style={{ color: "#1565C0" }}>
                     Mark all read
                   </button>
                 )}
@@ -344,7 +344,7 @@ function Topbar({ title, subtitle, onMenuClick, onLogout, onNavigate, adminProfi
           >
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              style={{ background: "#1E88E5", color: "#FFFFFF" }}
+              style={{ background: "#1565C0", color: "#FFFFFF" }}
             >
               {initials}
             </div>
