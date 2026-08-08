@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import AdminLayout from "./AdminLayout";
 import { createListing, updateListing, deleteListing, LANDMARK_CATEGORIES } from "../../lib/listings";
 import { fetchDevelopers, createDeveloper, updateDeveloper, fetchProjects, createProject, updateProject } from "../../lib/developers";
+import { fetchAdminAgents } from "../../lib/agents";
 import { uploadToR2, validateImageFile, validateDocumentFile, computeImageHash, hammingDistance, looksLikeScreenshot, getImageDimensions } from "../../lib/r2Upload";
 import { fetchActiveListingFieldOptionsGrouped } from "../../lib/listingOptions";
 import LocationPicker, { reverseGeocode } from "./LocationPicker";
@@ -16,7 +17,7 @@ const DEFAULT_TAGS_LIST = ["Luxury", "Affordable", "Gated Community", "Office", 
 const DEFAULT_AMENITIES = ["Lift", "Parking", "Visitor Parking", "Power Backup", "Security", "24x7 Security", "CCTV", "Intercom", "Swimming Pool", "Gym", "Garden", "Club House", "Multipurpose Hall", "Indoor Games", "Kids Play Area", "Jogging Track", "Amphitheatre", "Yoga / Meditation Area", "Senior Citizen Sitout", "Cafeteria", "WiFi", "Housekeeping", "Fire Safety", "Rain Water Harvesting", "Sewage Treatment Plant", "Solar Water Heating", "EV Charging Point", "Water Softener Plant", "Vaastu Compliant", "Pet Friendly", "Gated Community"];
 const FACING_OPTIONS = ["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"];
 const POSSESSION_OPTIONS = ["Ready to Move", "Under Construction"];
-const POSTED_BY_OPTIONS = ["Owner", "Builder", "Agent"];
+const POSTED_BY_OPTIONS = ["Owner", "Builder", "Channel Partner", "Agent", "Property Manager"];
 const MODERATION_OPTIONS = ["Live", "Pending", "Flagged", "Rejected"];
 // ── New in Section 2A: Property Identity & Basic Details ──
 const LISTING_TYPE_OPTIONS = ["Sale", "Rent", "Lease", "Resale", "New Launch", "Under Construction"];
@@ -67,6 +68,8 @@ const ROOM_LABEL_OPTIONS = ["Exterior", "Living Room", "Kitchen", "Bedroom", "Ba
 const MANDATORY_ROOM_CATEGORIES = ["Exterior", "Living Room", "Kitchen", "Bedroom", "Bathroom", "Balcony"];
 const MIN_PHOTOS = 8;
 const MAX_RECOMMENDED_PHOTOS = 15;
+// ── New in Section 2H: Seller / Agent Information ──
+const CONTACT_METHOD_OPTIONS = ["Call", "WhatsApp", "Chat", "Email"];
 const BADGE_COLOR_PRESETS = [
   { label: "Blue", value: "#1565C0" },
   { label: "Green", value: "#16A34A" },
@@ -245,6 +248,16 @@ const EMPTY_FORM = {
   floorPlanUrl: "",
   floorPlanCaption: "",
   projectConstructionProgressPhotos: [],
+
+  // ── Section 2H: Seller / Agent Information ──
+  agentId: null,
+  posterName: "",
+  posterPhone: "",
+  posterEmail: "",
+  posterPhotoUrl: "",
+  posterPreferredContactMethods: [],
+  posterAvailabilityNotes: "",
+  posterPhoneMaskingEnabled: true,
 };
 
 // ── Small building blocks ──────────────────────────────────────────────────────
@@ -433,10 +446,19 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       projectConstructionProgressPhotos: Array.isArray(editingListing.project?.constructionProgressPhotos)
         ? editingListing.project.constructionProgressPhotos.map((p, i) => ({ ...p, _key: `existing-${i}` }))
         : [],
+      agentId: editingListing.agentId || null,
+      posterName: nullToEmpty(editingListing.posterName),
+      posterPhone: nullToEmpty(editingListing.posterPhone),
+      posterEmail: nullToEmpty(editingListing.posterEmail),
+      posterPhotoUrl: nullToEmpty(editingListing.posterPhotoUrl),
+      posterPreferredContactMethods: Array.isArray(editingListing.posterPreferredContactMethods) ? editingListing.posterPreferredContactMethods : [],
+      posterAvailabilityNotes: nullToEmpty(editingListing.posterAvailabilityNotes),
+      posterPhoneMaskingEnabled: editingListing.posterPhoneMaskingEnabled !== false,
     };
   });
   const [availableDevelopers, setAvailableDevelopers] = useState([]);
   const [availableProjects, setAvailableProjects] = useState([]);
+  const [availableAgents, setAvailableAgents] = useState([]);
   const [docUploading, setDocUploading] = useState(false);
   const [docUploadError, setDocUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -454,6 +476,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     fetchActiveListingFieldOptionsGrouped().then(({ data }) => { if (!cancelled) setOptions(data); });
     fetchDevelopers().then(({ data }) => { if (!cancelled) setAvailableDevelopers(data); });
     fetchProjects().then(({ data }) => { if (!cancelled) setAvailableProjects(data); });
+    fetchAdminAgents().then(({ data }) => { if (!cancelled) setAvailableAgents(data); });
     return () => { cancelled = true; };
   }, []);
 
@@ -894,6 +917,21 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     setDocUploading(false);
     if (error) { setDocUploadError(error); return; }
     set("floorPlanUrl", url);
+  }
+
+  // ── Section 2H: poster photo upload (used only when no agent is linked) ──
+  async function handlePosterPhotoFileSelected(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validationError = validateImageFile(file);
+    if (validationError) { setDocUploadError(validationError); return; }
+    setDocUploadError("");
+    setDocUploading(true);
+    const { url, error } = await uploadToR2(file, "avatars");
+    setDocUploading(false);
+    if (error) { setDocUploadError(error); return; }
+    set("posterPhotoUrl", url);
   }
 
   async function handleDelete() {
@@ -1692,6 +1730,74 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           <p className="text-xs" style={{ color: "#6B7280" }}>
             The standard due-diligence disclaimer is shown automatically alongside this section on every listing — edit its wording under Admin → Site Content → Settings.
           </p>
+        </div>
+
+        {/* ── Seller / Agent Information (Section 2H) ── */}
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Seller &amp; Agent Information</h2>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>
+              Link an existing agent for their full profile (photo, RERA number, rating, areas served), or fill in plain contact details below — used whenever no agent is linked.
+            </p>
+          </div>
+
+          <Field label="Link Agent" hint="Only agents you manage in Agents & Partners appear here.">
+            <Select value={form.agentId || ""} onChange={(e) => set("agentId", e.target.value || null)}>
+              <option value="">— No agent linked (use contact details below) —</option>
+              {availableAgents.map((a) => <option key={a.id} value={a.id}>{a.name}{a.agency ? ` · ${a.agency}` : ""} ({a.status})</option>)}
+            </Select>
+          </Field>
+
+          {!form.agentId && (
+            <>
+              <div className="flex items-center gap-3">
+                {form.posterPhotoUrl ? (
+                  <img src={form.posterPhotoUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: "#F1F5F9", color: "#6B7280" }}>?</div>
+                )}
+                <label className="text-xs font-bold px-3 py-2 rounded-lg cursor-pointer" style={{ background: "#F1F5F9", color: "#1F2937" }}>
+                  Upload Photo
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="hidden" onChange={handlePosterPhotoFileSelected} />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Field label="Contact Name">
+                  <TextInput value={form.posterName} onChange={(e) => set("posterName", e.target.value)} placeholder="e.g. Rajesh Kumar" />
+                </Field>
+                <Field label="Contact Phone">
+                  <TextInput value={form.posterPhone} onChange={(e) => set("posterPhone", e.target.value)} placeholder="e.g. 98765 43210" />
+                </Field>
+                <Field label="Contact Email">
+                  <TextInput value={form.posterEmail} onChange={(e) => set("posterEmail", e.target.value)} placeholder="e.g. rajesh@example.com" />
+                </Field>
+              </div>
+
+              <Field label="Preferred Contact Methods">
+                <div className="flex flex-wrap gap-2">
+                  {CONTACT_METHOD_OPTIONS.map((m) => (
+                    <Chip key={m} label={m} active={form.posterPreferredContactMethods.includes(m)} onClick={() => toggleInArray("posterPreferredContactMethods", m)} />
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="Availability for Site Visits">
+                <TextInput value={form.posterAvailabilityNotes} onChange={(e) => set("posterAvailabilityNotes", e.target.value)} placeholder="e.g. Weekends only, 10am–6pm" />
+              </Field>
+
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+                <input type="checkbox" checked={form.posterPhoneMaskingEnabled} onChange={(e) => set("posterPhoneMaskingEnabled", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
+                Mask phone number until a visitor taps "Reveal"
+              </label>
+            </>
+          )}
+
+          {form.agentId && (
+            <p className="text-xs px-3.5 py-2.5 rounded-xl" style={{ background: "#EFF6FF", color: "#1565C0" }}>
+              Using the linked agent's profile — manage their photo, contact details, and availability from Admin → Agents &amp; Partners.
+            </p>
+          )}
         </div>
 
         {/* ── Photos (Section 2G: Media & Virtual Experience) ── */}

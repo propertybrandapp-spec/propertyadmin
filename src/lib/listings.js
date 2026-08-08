@@ -179,7 +179,39 @@ export function normalizeListing(row) {
       constructionQuality: row.project.construction_quality || null,
       structureType: row.project.structure_type || null,
       keyMaterials: row.project.key_materials || null,
+      constructionProgressPhotos: Array.isArray(row.project.construction_progress_photos) ? row.project.construction_progress_photos : [],
     } : null,
+
+    // ── Section 2H: Seller / Agent Information ──
+    agentId: row.agent_id || null,
+    // Nested profile from the join — null if not linked, or if linked to an
+    // agent whose profile isn't publicly visible (RLS only exposes Verified
+    // agents to the public site; admin sees any status).
+    agent: row.agent ? {
+      id: row.agent.id,
+      name: row.agent.name,
+      agency: row.agent.agency || null,
+      phone: row.agent.phone,
+      email: row.agent.email,
+      photoUrl: row.agent.photo_url || null,
+      experience: row.agent.experience || null,
+      areasServed: row.agent.areas_served || [],
+      reraNumber: row.agent.rera_number || null,
+      responseTime: row.agent.response_time || null,
+      rating: row.agent.rating != null ? Number(row.agent.rating) : null,
+      status: row.agent.status,
+      preferredContactMethods: row.agent.preferred_contact_methods || [],
+      availabilityNotes: row.agent.availability_notes || null,
+      phoneMaskingEnabled: !!row.agent.phone_masking_enabled,
+    } : null,
+    // Plain fallback — used when no agent is linked (mainly private Owners).
+    posterName: row.poster_name || null,
+    posterPhone: row.poster_phone || null,
+    posterEmail: row.poster_email || null,
+    posterPhotoUrl: row.poster_photo_url || null,
+    posterPreferredContactMethods: row.poster_preferred_contact_methods || [],
+    posterAvailabilityNotes: row.poster_availability_notes || null,
+    posterPhoneMaskingEnabled: row.poster_phone_masking_enabled !== false,
 
     // ── Section 2E: Legal & Verification Information ──
     reraStatus: row.rera_status || "Pending Verification",
@@ -399,6 +431,19 @@ export function denormalizeListing(f) {
     developer_name: f.developerName || null,
     project_id: f.projectId || null,
 
+    // ── Section 2H: Seller / Agent Information ──
+    // agent_id links to a full agents-directory profile (admin-only —
+    // AdminListingForm.jsx lets the admin pick one); poster_* are plain
+    // fallbacks anyone (including public self-listers) can set directly.
+    agent_id: f.agentId || null,
+    poster_name: f.posterName || null,
+    poster_phone: f.posterPhone || null,
+    poster_email: f.posterEmail || null,
+    poster_photo_url: f.posterPhotoUrl || null,
+    poster_preferred_contact_methods: Array.isArray(f.posterPreferredContactMethods) ? f.posterPreferredContactMethods : [],
+    poster_availability_notes: f.posterAvailabilityNotes || null,
+    poster_phone_masking_enabled: f.posterPhoneMaskingEnabled !== false,
+
     // ── Section 2E: Legal & Verification Information ──
     // poster_verified / verification_date / verification_source /
     // document_verification_status and the certificate/status fields are
@@ -469,12 +514,12 @@ function daysAgo(isoDate) {
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
-// Every listing read pulls in its linked developer/project profile (if any)
-// in the same query — Supabase resolves this via the FK relationship, no
-// extra round-trip needed. Both come back `null` when a listing isn't linked
-// to one (e.g. public self-listings, which only ever set developer_name /
-// project_name plain text instead).
-const LISTING_SELECT = "*, developer:developers(*), project:projects(*)";
+// Every listing read pulls in its linked developer/project/agent profile (if
+// any) in the same query — Supabase resolves this via the FK relationship,
+// no extra round-trip needed. All come back `null` when a listing isn't
+// linked to one (e.g. public self-listings, which only ever set
+// developer_name/poster_name plain text instead).
+const LISTING_SELECT = "*, developer:developers(*), project:projects(*), agent:agents(*)";
 
 // ── Public site: only ever see moderation-approved ("Live") listings ────────
 export async function fetchPublicListings() {

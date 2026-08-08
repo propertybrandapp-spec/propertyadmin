@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "./AdminLayout";
-import { fetchAdminAgents, updateAgentStatus, createAgent, deleteAgent } from "../../lib/agents";
+import { fetchAdminAgents, updateAgentStatus, createAgent, updateAgent, deleteAgent } from "../../lib/agents";
+import { uploadToR2, validateImageFile } from "../../lib/r2Upload";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
@@ -14,14 +15,115 @@ const TIER_STYLES = {
   Associate: { bg: "#EFF6FF", color: "#1565C0" },
 };
 const FILTER_TABS = ["All", "Pending", "Verified", "Suspended"];
+// ── Section 2H: Seller / Agent Information ──
+const CONTACT_METHOD_OPTIONS = ["Call", "WhatsApp", "Chat", "Email"];
 
 function Badge({ style, children }) {
   return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: style.bg, color: style.color }}>{children}</span>;
 }
 
+function toggleInArray(arr, value) {
+  return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+}
+
+// Shared between AddAgentForm and the drawer's Edit mode, so the two don't
+// drift out of sync as fields get added.
+function AgentFormFields({ form, setForm, showStatusTier = false }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function handlePhotoSelected(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validationError = validateImageFile(file);
+    if (validationError) { setUploadError(validationError); return; }
+    setUploadError("");
+    setUploading(true);
+    const { url, error } = await uploadToR2(file, "agents");
+    setUploading(false);
+    if (error) { setUploadError(error); return; }
+    setForm({ ...form, photoUrl: url });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        {form.photoUrl ? (
+          <img src={form.photoUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+        ) : (
+          <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: "#F1F5F9", color: "#6B7280" }}>?</div>
+        )}
+        <label className="text-xs font-bold px-3 py-2 rounded-lg cursor-pointer" style={{ background: "#F1F5F9", color: "#1F2937" }}>
+          {uploading ? "Uploading…" : "Upload Photo"}
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="hidden" onChange={handlePhotoSelected} disabled={uploading} />
+        </label>
+        {uploadError && <span className="text-xs font-semibold" style={{ color: "#DC2626" }}>{uploadError}</span>}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <input placeholder="Full Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+        <input placeholder="Agency (optional)" value={form.agency} onChange={e => setForm({ ...form, agency: e.target.value })}
+          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+        <input placeholder="Phone *" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
+          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+        <input placeholder="Email *" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+        <input placeholder="City" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })}
+          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+        <input placeholder="Experience (e.g. 8 years)" value={form.experience} onChange={e => setForm({ ...form, experience: e.target.value })}
+          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+        <input placeholder="RERA Agent Reg. No." value={form.reraNumber} onChange={e => setForm({ ...form, reraNumber: e.target.value })}
+          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+        <input placeholder="Response Time (e.g. Within 1 hour)" value={form.responseTime} onChange={e => setForm({ ...form, responseTime: e.target.value })}
+          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+        {showStatusTier && (
+          <select value={form.tier} onChange={e => setForm({ ...form, tier: e.target.value })}
+            className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }}>
+            {["Associate", "Silver", "Gold"].map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
+      </div>
+
+      <div>
+        <label className="text-xs font-bold block mb-1.5" style={{ color: "#6B7280" }}>Areas Served</label>
+        <input placeholder="Comma-separated, e.g. Patia, Chandrasekharpur, Nayapalli"
+          value={(form.areasServed || []).join(", ")}
+          onChange={e => setForm({ ...form, areasServed: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
+          className="w-full text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+      </div>
+
+      <div>
+        <label className="text-xs font-bold block mb-1.5" style={{ color: "#6B7280" }}>Preferred Contact Methods</label>
+        <div className="flex flex-wrap gap-2">
+          {CONTACT_METHOD_OPTIONS.map((m) => (
+            <button key={m} type="button" onClick={() => setForm({ ...form, preferredContactMethods: toggleInArray(form.preferredContactMethods || [], m) })}
+              className="text-xs font-bold px-3 py-1.5 rounded-full"
+              style={(form.preferredContactMethods || []).includes(m) ? { background: "#1565C0", color: "#FFFFFF" } : { background: "#F1F5F9", color: "#1F2937" }}>
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <input placeholder="Availability (e.g. Site visits Mon–Sat, 10am–6pm)" value={form.availabilityNotes} onChange={e => setForm({ ...form, availabilityNotes: e.target.value })}
+        className="w-full text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
+
+      <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+        <input type="checkbox" checked={!!form.phoneMaskingEnabled} onChange={e => setForm({ ...form, phoneMaskingEnabled: e.target.checked })} className="w-4 h-4 rounded accent-[#1565C0]" />
+        Mask phone number until a visitor taps "Reveal"
+      </label>
+    </div>
+  );
+}
+
 // ── Add Agent Form (inline card) ──────────────────────────────────────────────
 function AddAgentForm({ onClose, onSaved }) {
-  const [form, setForm] = useState({ name: "", agency: "", phone: "", email: "", city: "", tier: "Associate", status: "Verified" });
+  const [form, setForm] = useState({
+    name: "", agency: "", phone: "", email: "", city: "", tier: "Associate", status: "Verified",
+    photoUrl: "", areasServed: [], responseTime: "", preferredContactMethods: [], availabilityNotes: "", phoneMaskingEnabled: false,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,22 +143,7 @@ function AddAgentForm({ onClose, onSaved }) {
         <button onClick={onClose} className="text-xs font-semibold" style={{ color: "#6B7280" }}>Cancel</button>
       </div>
       {error && <p className="text-xs font-semibold" style={{ color: "#1565C0" }}>{error}</p>}
-      <div className="grid grid-cols-2 gap-3">
-        <input placeholder="Full Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
-        <input placeholder="Agency (optional)" value={form.agency} onChange={e => setForm({ ...form, agency: e.target.value })}
-          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
-        <input placeholder="Phone *" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
-          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
-        <input placeholder="Email *" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
-        <input placeholder="City" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })}
-          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }} />
-        <select value={form.tier} onChange={e => setForm({ ...form, tier: e.target.value })}
-          className="text-sm px-3.5 py-2.5 rounded-xl" style={{ border: "1px solid #E2E8F0" }}>
-          {["Associate", "Silver", "Gold"].map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
+      <AgentFormFields form={form} setForm={setForm} showStatusTier />
       <button onClick={handleSave} disabled={saving}
         className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60"
         style={{ background: "#1565C0", color: "#FFFFFF" }}>
@@ -67,54 +154,98 @@ function AddAgentForm({ onClose, onSaved }) {
 }
 
 // ── Agent Profile Drawer ──────────────────────────────────────────────────────
-function AgentDrawer({ agent, onClose, onStatusChange }) {
+function AgentDrawer({ agent, onClose, onStatusChange, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(agent);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave() {
+    if (!(form.name && form.phone && form.email)) { setError("Name, phone, and email are required."); return; }
+    setSaving(true);
+    const { error } = await updateAgent(agent.dbId, form);
+    setSaving(false);
+    if (error) { setError(error.message || "Failed to save changes."); return; }
+    setEditing(false);
+    onSaved();
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(31,41,55,0.5)" }} onClick={onClose}>
       <div className="w-full sm:w-96 h-full overflow-y-auto p-6" style={{ background: "#FFFFFF" }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold" style={{ color: "#1F2937" }}>Agent Profile</h2>
+          <h2 className="text-lg font-bold" style={{ color: "#1F2937" }}>{editing ? "Edit Agent" : "Agent Profile"}</h2>
           <button onClick={onClose} className="text-2xl leading-none" style={{ color: "#6B7280" }}>×</button>
         </div>
 
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold" style={{ background: "#1565C0", color: "#FFFFFF" }}>
-            {agent.name.split(" ").map(w => w[0]).slice(0, 2).join("")}
+        {editing ? (
+          <div className="space-y-4">
+            {error && <p className="text-xs font-semibold" style={{ color: "#DC2626" }}>{error}</p>}
+            <AgentFormFields form={form} setForm={setForm} />
+            <div className="flex gap-2">
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{ background: "#1565C0", color: "#FFFFFF" }}>
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+              <button onClick={() => { setForm(agent); setEditing(false); setError(""); }} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: "#F1F5F9", color: "#1F2937" }}>
+                Cancel
+              </button>
+            </div>
           </div>
-          <div>
-            <p className="font-bold" style={{ color: "#1F2937" }}>{agent.name}</p>
-            <p className="text-xs" style={{ color: "#6B7280" }}>{agent.agency || "Independent Agent"}</p>
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 mb-6">
+              {agent.photoUrl ? (
+                <img src={agent.photoUrl} alt="" className="w-14 h-14 rounded-full object-cover" />
+              ) : (
+                <div className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold" style={{ background: "#1565C0", color: "#FFFFFF" }}>
+                  {agent.name.split(" ").map(w => w[0]).slice(0, 2).join("")}
+                </div>
+              )}
+              <div>
+                <p className="font-bold" style={{ color: "#1F2937" }}>{agent.name}</p>
+                <p className="text-xs" style={{ color: "#6B7280" }}>{agent.agency || "Independent Agent"}</p>
+              </div>
+            </div>
 
-        <div className="space-y-3 text-sm mb-6">
-          <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Phone</span><span style={{ color: "#1F2937" }}>{agent.phone}</span></div>
-          <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Email</span><span style={{ color: "#1F2937" }}>{agent.email}</span></div>
-          {agent.city && <div className="flex justify-between"><span style={{ color: "#6B7280" }}>City</span><span style={{ color: "#1F2937" }}>{agent.city}</span></div>}
-          {agent.experience && <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Experience</span><span style={{ color: "#1F2937" }}>{agent.experience}</span></div>}
-          {agent.reraNumber && <div className="flex justify-between"><span style={{ color: "#6B7280" }}>RERA No.</span><span style={{ color: "#1F2937" }}>{agent.reraNumber}</span></div>}
-          <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Tier</span><Badge style={TIER_STYLES[agent.tier] || TIER_STYLES.Associate}>{agent.tier}</Badge></div>
-          <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Status</span><Badge style={STATUS_STYLES[agent.status] || STATUS_STYLES.Pending}>{agent.status}</Badge></div>
-          <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Deals Closed</span><span style={{ color: "#1F2937" }}>{agent.deals}</span></div>
-          <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Member Since</span><span style={{ color: "#1F2937" }}>{agent.since}</span></div>
-        </div>
+            <div className="space-y-3 text-sm mb-6">
+              <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Phone</span><span style={{ color: "#1F2937" }}>{agent.phone}</span></div>
+              <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Email</span><span style={{ color: "#1F2937" }}>{agent.email}</span></div>
+              {agent.city && <div className="flex justify-between"><span style={{ color: "#6B7280" }}>City</span><span style={{ color: "#1F2937" }}>{agent.city}</span></div>}
+              {agent.experience && <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Experience</span><span style={{ color: "#1F2937" }}>{agent.experience}</span></div>}
+              {agent.reraNumber && <div className="flex justify-between"><span style={{ color: "#6B7280" }}>RERA No.</span><span style={{ color: "#1F2937" }}>{agent.reraNumber}</span></div>}
+              {agent.areasServed?.length > 0 && <div className="flex justify-between gap-3"><span style={{ color: "#6B7280" }} className="shrink-0">Areas Served</span><span style={{ color: "#1F2937" }} className="text-right">{agent.areasServed.join(", ")}</span></div>}
+              {agent.responseTime && <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Response Time</span><span style={{ color: "#1F2937" }}>{agent.responseTime}</span></div>}
+              {agent.preferredContactMethods?.length > 0 && <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Preferred Contact</span><span style={{ color: "#1F2937" }}>{agent.preferredContactMethods.join(", ")}</span></div>}
+              {agent.availabilityNotes && <div className="flex justify-between gap-3"><span style={{ color: "#6B7280" }} className="shrink-0">Availability</span><span style={{ color: "#1F2937" }} className="text-right">{agent.availabilityNotes}</span></div>}
+              <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Phone Masking</span><span style={{ color: "#1F2937" }}>{agent.phoneMaskingEnabled ? "On" : "Off"}</span></div>
+              <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Tier</span><Badge style={TIER_STYLES[agent.tier] || TIER_STYLES.Associate}>{agent.tier}</Badge></div>
+              <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Status</span><Badge style={STATUS_STYLES[agent.status] || STATUS_STYLES.Pending}>{agent.status}</Badge></div>
+              <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Deals Closed</span><span style={{ color: "#1F2937" }}>{agent.deals}</span></div>
+              <div className="flex justify-between"><span style={{ color: "#6B7280" }}>Member Since</span><span style={{ color: "#1F2937" }}>{agent.since}</span></div>
+            </div>
 
-        <div className="flex flex-col gap-2">
-          {agent.status !== "Verified" && (
-            <button onClick={() => onStatusChange(agent, "Verified")} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#16A34A", color: "#FFFFFF" }}>
-              Approve (Verify)
-            </button>
-          )}
-          {agent.status !== "Suspended" && (
-            <button onClick={() => onStatusChange(agent, "Suspended")} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#FEE2E2", color: "#DC2626" }}>
-              Suspend
-            </button>
-          )}
-          {agent.status === "Suspended" && (
-            <button onClick={() => onStatusChange(agent, "Verified")} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#EFF6FF", color: "#1565C0" }}>
-              Reinstate
-            </button>
-          )}
-        </div>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => setEditing(true)} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#EFF6FF", color: "#1565C0" }}>
+                Edit Profile
+              </button>
+              {agent.status !== "Verified" && (
+                <button onClick={() => onStatusChange(agent, "Verified")} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#16A34A", color: "#FFFFFF" }}>
+                  Approve (Verify)
+                </button>
+              )}
+              {agent.status !== "Suspended" && (
+                <button onClick={() => onStatusChange(agent, "Suspended")} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#FEE2E2", color: "#DC2626" }}>
+                  Suspend
+                </button>
+              )}
+              {agent.status === "Suspended" && (
+                <button onClick={() => onStatusChange(agent, "Verified")} className="py-2.5 rounded-xl text-sm font-bold" style={{ background: "#EFF6FF", color: "#1565C0" }}>
+                  Reinstate
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -264,7 +395,8 @@ export default function AdminAgents({ onNavigate, onLogout, adminProfile }) {
       </div>
 
       {viewingAgent && (
-        <AgentDrawer agent={viewingAgent} onClose={() => setViewingAgent(null)} onStatusChange={handleStatusChange} />
+        <AgentDrawer agent={viewingAgent} onClose={() => setViewingAgent(null)} onStatusChange={handleStatusChange}
+          onSaved={() => { setViewingAgent(null); load(); }} />
       )}
     </AdminLayout>
   );

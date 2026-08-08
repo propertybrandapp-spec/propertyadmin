@@ -23,16 +23,30 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // ── Safe query wrapper ────────────────────────────────────────────────────────
 // supabase-js resolves with { data, error } for normal DB/RLS errors, but a
 // transport-level failure (offline, DNS failure, misconfigured URL, Supabase
-// outage) makes the underlying fetch() reject instead — which, left
+// outage — or, commonly, just a slow/flaky first connection right after the
+// page opens) makes the underlying fetch() reject instead — which, left
 // unhandled, turns into an unhandled promise rejection and leaves whatever
-// page was loading stuck in its loading state forever. Every data-layer
-// function in src/lib wraps its query in this so a failure always resolves
-// to a normal { data: null, error } shape that callers already know how to
-// handle (show an error/empty state) instead of hanging indefinitely.
-export async function safeQuery(builder) {
-  try {
-    return await builder;
-  } catch (err) {
-    return { data: null, error: { message: err?.message || "Network error — please check your connection." } };
+// page was loading stuck in its loading state forever, with nothing telling
+// it to try again. Every data-layer function in src/lib wraps its query in
+// this so a failure always resolves to a normal { data: null, error } shape
+// that callers already know how to handle, AND so a single transient
+// hiccup — the classic "works after I refresh the page" symptom — gets
+// silently retried instead of giving up on the very first attempt.
+//
+// `builder` is a Supabase query object, not a plain Promise — but it's
+// "thenable" (implements .then, same as supabase.auth.getSession()), so
+// `await builder` triggers it fresh each time, same as the original
+// single-attempt version of this function did; repeating that per retry is
+// safe and re-issues the actual request each time.
+export async function safeQuery(builder, retries = 2, delayMs = 500) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await builder;
+    } catch (err) {
+      if (attempt >= retries) {
+        return { data: null, error: { message: err?.message || "Network error — please check your connection." } };
+      }
+      await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
+    }
   }
 }
