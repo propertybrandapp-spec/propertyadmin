@@ -35,6 +35,21 @@ export function normalizeLead(row, adminsById, listingsById = {}) {
     date: row.created_at ? new Date(row.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—",
     daysAgo: daysAgo(row.created_at),
     createdAt: row.created_at,
+
+    // ── Section 3A: Quick Questions for Buyers ──
+    clientId: row.client_id || null,
+    buyerPurpose: row.buyer_purpose || null,
+    buyerBudgetMax: row.buyer_budget_max != null ? Number(row.buyer_budget_max) : null,
+    buyerComfortableEmi: row.buyer_comfortable_emi != null ? Number(row.buyer_comfortable_emi) : null,
+    buyerPreferredLocations: row.buyer_preferred_locations || [],
+    buyerAcceptableLocations: row.buyer_acceptable_locations || [],
+    buyerExcludedLocations: row.buyer_excluded_locations || [],
+    buyerPurchaseTimeline: row.buyer_purchase_timeline || null,
+    buyerPriorityFactors: row.buyer_priority_factors || [],
+    buyerLoanAssistance: row.buyer_loan_assistance || null,
+    buyerOpenToUnderConstruction: row.buyer_open_to_under_construction || null,
+    buyerMustHaveFeatures: row.buyer_must_have_features || [],
+    buyerWantsComparison: !!row.buyer_wants_comparison,
   };
 }
 
@@ -92,7 +107,16 @@ export async function deleteLead(id) {
 // which listing it's about, with full specs/photos, from the Leads screen.
 // stage defaults to "New" but "Schedule a Site Visit" passes "Site Visit"
 // directly so it's immediately distinguishable in the pipeline.
-export async function submitLead({ name, phone, email, interest, budget, source = "Website", listingId, stage }) {
+//
+// buyerPreferences (Section 3A — optional "Tell us more" step) mirrors
+// client_profiles' Buyer Preferences shape: { purpose, budgetMax,
+// comfortableEmi, preferredLocations, acceptableLocations,
+// excludedLocations, purchaseTimeline, priorityFactors, loanAssistance,
+// openToUnderConstruction, mustHaveFeatures, wantsComparison }. Every field
+// is optional — omitted ones just stay at their DB default.
+export async function submitLead({ name, phone, email, interest, budget, source = "Website", listingId, stage, buyerPreferences = {} }) {
+  const { data: sessionData } = await safeQuery(supabase.auth.getSession());
+  const b = buyerPreferences;
   const { error } = await safeQuery(
     supabase.from("leads").insert({
       name,
@@ -103,6 +127,19 @@ export async function submitLead({ name, phone, email, interest, budget, source 
       source,
       stage: stage || "New",
       listing_id: listingId || null,
+      client_id: sessionData?.session?.user?.id || null,
+      buyer_purpose: b.purpose || null,
+      buyer_budget_max: b.budgetMax || null,
+      buyer_comfortable_emi: b.comfortableEmi || null,
+      buyer_preferred_locations: b.preferredLocations || [],
+      buyer_acceptable_locations: b.acceptableLocations || [],
+      buyer_excluded_locations: b.excludedLocations || [],
+      buyer_purchase_timeline: b.purchaseTimeline || null,
+      buyer_priority_factors: b.priorityFactors || [],
+      buyer_loan_assistance: b.loanAssistance || null,
+      buyer_open_to_under_construction: b.openToUnderConstruction || null,
+      buyer_must_have_features: b.mustHaveFeatures || [],
+      buyer_wants_comparison: !!b.wantsComparison,
     })
   );
   return { error };
