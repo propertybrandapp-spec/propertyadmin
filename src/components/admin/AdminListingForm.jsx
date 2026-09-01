@@ -70,6 +70,11 @@ const MIN_PHOTOS = 8;
 const MAX_RECOMMENDED_PHOTOS = 15;
 // ── New in Section 2H: Seller / Agent Information ──
 const CONTACT_METHOD_OPTIONS = ["Call", "WhatsApp", "Chat", "Email"];
+// ── New in Section 3C: Questions for Sellers / Listing Owners ──
+const SELLER_ROLE_OPTIONS = ["Owner", "Authorized Representative", "Builder", "Agent"];
+const EXCLUSIVE_LISTING_OPTIONS = ["Exclusive to PropertyBrands", "Also Listed Elsewhere"];
+const OCCUPANCY_OPTIONS = ["Vacant", "Occupied by Owner", "Occupied by Tenant"];
+const MARKETING_SUPPORT_OPTIONS = ["Professional Photography", "Video Walkthrough", "Valuation", "Marketing Support"];
 const BADGE_COLOR_PRESETS = [
   { label: "Blue", value: "#1565C0" },
   { label: "Green", value: "#16A34A" },
@@ -258,6 +263,20 @@ const EMPTY_FORM = {
   posterPreferredContactMethods: [],
   posterAvailabilityNotes: "",
   posterPhoneMaskingEnabled: true,
+
+  // ── Section 3C: Questions for Sellers / Listing Owners ──
+  sellerRoleConfirmation: "",
+  sellerExclusiveListing: "",
+  sellerReasonForSelling: "",
+  sellerMinimumAcceptablePrice: "",
+  sellerCurrentlyOccupied: "",
+  sellerAvailabilityDate: "",
+  sellerDocumentsAvailable: false,
+  sellerWantsMarketingSupport: [],
+  sellerContactAuthorization: false,
+
+  // ── Section 4: Property Detail Page — Key Highlights ──
+  keyHighlights: [],
 };
 
 // ── Small building blocks ──────────────────────────────────────────────────────
@@ -454,6 +473,16 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       posterPreferredContactMethods: Array.isArray(editingListing.posterPreferredContactMethods) ? editingListing.posterPreferredContactMethods : [],
       posterAvailabilityNotes: nullToEmpty(editingListing.posterAvailabilityNotes),
       posterPhoneMaskingEnabled: editingListing.posterPhoneMaskingEnabled !== false,
+      sellerRoleConfirmation: nullToEmpty(editingListing.sellerRoleConfirmation),
+      sellerExclusiveListing: nullToEmpty(editingListing.sellerExclusiveListing),
+      sellerReasonForSelling: nullToEmpty(editingListing.sellerReasonForSelling),
+      sellerMinimumAcceptablePrice: nullToEmpty(editingListing.sellerMinimumAcceptablePrice),
+      sellerCurrentlyOccupied: nullToEmpty(editingListing.sellerCurrentlyOccupied),
+      sellerAvailabilityDate: nullToEmpty(editingListing.sellerAvailabilityDate),
+      sellerDocumentsAvailable: !!editingListing.sellerDocumentsAvailable,
+      sellerWantsMarketingSupport: Array.isArray(editingListing.sellerWantsMarketingSupport) ? editingListing.sellerWantsMarketingSupport : [],
+      sellerContactAuthorization: !!editingListing.sellerContactAuthorization,
+      keyHighlights: Array.isArray(editingListing.keyHighlights) ? editingListing.keyHighlights : [],
     };
   });
   const [availableDevelopers, setAvailableDevelopers] = useState([]);
@@ -504,6 +533,17 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       ...f,
       [key]: f[key].includes(value) ? f[key].filter((x) => x !== value) : [...f[key], value],
     }));
+  }
+
+  // ── Section 4: Why This Property — key highlights (simple text list) ──
+  function addHighlight() {
+    setForm((f) => ({ ...f, keyHighlights: [...f.keyHighlights, ""] }));
+  }
+  function updateHighlight(index, value) {
+    setForm((f) => ({ ...f, keyHighlights: f.keyHighlights.map((h, i) => (i === index ? value : h)) }));
+  }
+  function removeHighlight(index) {
+    setForm((f) => ({ ...f, keyHighlights: f.keyHighlights.filter((_, i) => i !== index) }));
   }
 
   // ── Section 2C: nearby landmarks (repeatable rows) ──
@@ -1047,6 +1087,22 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none"
               style={inputStyle}
             />
+          </Field>
+
+          <Field label="Why This Property? — Key Highlights" hint="3-5 short, concise reasons this property stands out — shown near the top of the public page.">
+            <div className="space-y-2">
+              {form.keyHighlights.map((h, i) => (
+                <div key={i} className="flex gap-2">
+                  <TextInput value={h} onChange={(e) => updateHighlight(i, e.target.value)} placeholder="e.g. Corner unit with unobstructed park view" />
+                  <button type="button" onClick={() => removeHighlight(i)} className="text-xs font-bold px-3 py-2 rounded-lg shrink-0 hover:opacity-80" style={{ color: "#DC2626" }}>Remove</button>
+                </div>
+              ))}
+              {form.keyHighlights.length < 5 && (
+                <button type="button" onClick={addHighlight} className="text-xs font-bold px-3 py-2 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>
+                  + Add Highlight
+                </button>
+              )}
+            </div>
           </Field>
         </div>
 
@@ -2121,6 +2177,70 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </div>
             </Field>
           </div>
+        </div>
+
+        {/* ── Seller Questions (Section 3C) ── */}
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Seller / Listing Owner Questions</h2>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>Asked of whoever is posting this listing — final confirmations before it goes live.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Relationship to Property" hint="Owner, authorized representative, builder, or agent?">
+              <Select value={form.sellerRoleConfirmation} onChange={(e) => set("sellerRoleConfirmation", e.target.value)}>
+                <option value="">— N/A —</option>
+                {SELLER_ROLE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </Select>
+            </Field>
+            <Field label="Exclusivity">
+              <Select value={form.sellerExclusiveListing} onChange={(e) => set("sellerExclusiveListing", e.target.value)}>
+                <option value="">— N/A —</option>
+                {EXCLUSIVE_LISTING_OPTIONS.map((e_) => <option key={e_} value={e_}>{e_}</option>)}
+              </Select>
+            </Field>
+          </div>
+
+          <div className="rounded-xl p-4 space-y-4" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+            <p className="text-xs font-bold" style={{ color: "#92400E" }}>🔒 Private — visible to PropertyBrands only, never shown on the public listing.</p>
+            <Field label="Reason for Selling / Renting" hint="Optional.">
+              <textarea value={form.sellerReasonForSelling} onChange={(e) => set("sellerReasonForSelling", e.target.value)} rows={2}
+                className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none" style={{ ...inputStyle, background: "#FFFFFF" }} />
+            </Field>
+            <Field label="Minimum Acceptable Price (₹)">
+              <TextInput type="number" min="0" value={form.sellerMinimumAcceptablePrice} onChange={(e) => set("sellerMinimumAcceptablePrice", e.target.value)} placeholder="Helps agents gauge negotiation room" />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Currently Occupied?">
+              <Select value={form.sellerCurrentlyOccupied} onChange={(e) => set("sellerCurrentlyOccupied", e.target.value)}>
+                <option value="">— N/A —</option>
+                {OCCUPANCY_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+              </Select>
+            </Field>
+            <Field label="Availability Date" hint="When this unit is actually move-in ready.">
+              <TextInput type="date" value={form.sellerAvailabilityDate} onChange={(e) => set("sellerAvailabilityDate", e.target.value)} />
+            </Field>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+            <input type="checkbox" checked={form.sellerDocumentsAvailable} onChange={(e) => set("sellerDocumentsAvailable", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
+            All property documents are available for verification
+          </label>
+
+          <Field label="Interested in Support Services?">
+            <div className="flex flex-wrap gap-2">
+              {MARKETING_SUPPORT_OPTIONS.map((m) => (
+                <Chip key={m} label={m} active={form.sellerWantsMarketingSupport.includes(m)} onClick={() => toggleInArray("sellerWantsMarketingSupport", m)} />
+              ))}
+            </div>
+          </Field>
+
+          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+            <input type="checkbox" checked={form.sellerContactAuthorization} onChange={(e) => set("sellerContactAuthorization", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
+            Authorized to contact for verification and buyer leads
+          </label>
         </div>
 
         {/* ── Actions ── */}

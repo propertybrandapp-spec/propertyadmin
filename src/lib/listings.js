@@ -20,6 +20,68 @@ export const LANDMARK_LAYER_GROUPS = {
   "Business Hub": "Employment Hubs",
 };
 
+// ── Section 4: Amenities grouped into 6 categories for the property detail
+// page layout. Covers every preset from the base `amenities` checklist plus
+// the Section 2F structured feature arrays (unitFeatures, securityFeatures,
+// waterSewageFeatures, seniorCitizenFeatures, accessibilityFeatures) so a
+// single grouping function can categorize whichever of those a listing has.
+// Anything not explicitly listed (a custom/free-typed amenity, or a future
+// preset added without updating this map) falls back to "Convenience" —
+// a reasonable catch-all rather than silently dropping it from the page.
+export const AMENITY_CATEGORIES = ["Security", "Convenience", "Wellness", "Recreation", "Sustainability", "Accessibility"];
+
+const AMENITY_CATEGORY_MAP = {
+  // Security
+  "Security": "Security", "24x7 Security": "Security", "CCTV": "Security", "Intercom": "Security",
+  "Fire Safety": "Security", "Gated Community": "Security", "Security Guards": "Security",
+  "CCTV Surveillance": "Security", "Access Control": "Security", "Video Door Phone": "Security",
+  "In-unit Video Door Phone": "Security",
+  // Convenience
+  "Lift": "Convenience", "Parking": "Convenience", "Visitor Parking": "Convenience", "Power Backup": "Convenience",
+  "WiFi": "Convenience", "Housekeeping": "Convenience", "Water Softener Plant": "Convenience",
+  "Co-working / WFH Space": "Convenience", "Modular Kitchen": "Convenience", "False Ceiling": "Convenience",
+  "Wooden Flooring": "Convenience", "Vitrified Tile Flooring": "Convenience", "Walk-in Closet": "Convenience",
+  "Study Room": "Convenience", "Private Balcony": "Convenience", "Premium Bath Fittings": "Convenience",
+  "Piped Gas Connection": "Convenience", "Air Conditioning": "Convenience", "Wardrobes": "Convenience",
+  "Home Automation": "Convenience", "Private Terrace/Garden": "Convenience",
+  // Wellness
+  "Gym": "Wellness", "Yoga / Meditation Area": "Wellness", "Senior Citizen Sitout": "Wellness",
+  "Ramps": "Wellness", "Lifts": "Wellness", "Handrails": "Wellness", "Common Seating Areas": "Wellness",
+  "Emergency Support/Alert System": "Wellness",
+  // Recreation
+  "Swimming Pool": "Recreation", "Garden": "Recreation", "Club House": "Recreation", "Multipurpose Hall": "Recreation",
+  "Indoor Games": "Recreation", "Kids Play Area": "Recreation", "Jogging Track": "Recreation", "Amphitheatre": "Recreation",
+  "Cafeteria": "Recreation", "Sports Court": "Recreation", "Skating Rink": "Recreation", "Cricket Practice Net": "Recreation",
+  "Banquet Hall": "Recreation",
+  // Sustainability
+  "Rain Water Harvesting": "Sustainability", "Sewage Treatment Plant": "Sustainability", "Solar Water Heating": "Sustainability",
+  "EV Charging Point": "Sustainability", "Water Treatment Plant": "Sustainability", "Sewage Treatment Plant (STP)": "Sustainability",
+  "Rainwater Harvesting": "Sustainability",
+  // Accessibility
+  "Vaastu Compliant": "Accessibility", "Pet Friendly": "Accessibility", "Wheelchair Ramps": "Accessibility",
+  "Wide Doorways": "Accessibility", "Accessible Restrooms": "Accessibility", "Braille Signage": "Accessibility",
+  "Accessible Parking": "Accessibility", "Elevator Access": "Accessibility", "Tactile Flooring": "Accessibility",
+};
+
+export function categorizeAmenity(name) {
+  return AMENITY_CATEGORY_MAP[name] || "Convenience";
+}
+
+// Builds { Security: [...], Convenience: [...], ... } from every amenity/
+// feature source a listing has — used by PropertyDetail.jsx so the grouped
+// display doesn't need to know about each individual source array.
+export function groupedAmenities(property) {
+  const groups = Object.fromEntries(AMENITY_CATEGORIES.map((c) => [c, []]));
+  const add = (name) => { if (name && !groups[categorizeAmenity(name)].includes(name)) groups[categorizeAmenity(name)].push(name); };
+  (property.amenities || []).forEach(add);
+  (property.unitFeatures || []).forEach(add);
+  (property.securityFeatures || []).forEach(add);
+  (property.waterSewageFeatures || []).forEach(add);
+  (property.seniorCitizenFeatures || []).forEach(add);
+  (property.accessibilityFeatures || []).forEach(add);
+  return groups;
+}
+
 // ── Listings Data Layer ───────────────────────────────────────────────────────
 // Every component that reads or writes property listings (SearchResults,
 // PropertyDetail, the Admin listings screen + form) goes through this file
@@ -260,6 +322,24 @@ export function normalizeListing(row) {
     floorPlanUrl: row.floor_plan_url || null,
     floorPlanCaption: row.floor_plan_caption || null,
 
+    // ── Section 3C: Questions for Sellers / Listing Owners ──
+    // sellerReasonForSelling and sellerMinimumAcceptablePrice are sensitive —
+    // they're normalized here (so the admin console can show them) but are
+    // NEVER read by PropertyDetail.jsx or any other public-facing component.
+    // Keep it that way if you touch this file.
+    sellerRoleConfirmation: row.seller_role_confirmation || null,
+    sellerExclusiveListing: row.seller_exclusive_listing || null,
+    sellerReasonForSelling: row.seller_reason_for_selling || null,               // PRIVATE
+    sellerMinimumAcceptablePrice: row.seller_minimum_acceptable_price != null ? Number(row.seller_minimum_acceptable_price) : null,  // PRIVATE
+    sellerCurrentlyOccupied: row.seller_currently_occupied || null,
+    sellerAvailabilityDate: row.seller_availability_date || null,
+    sellerDocumentsAvailable: !!row.seller_documents_available,
+    sellerWantsMarketingSupport: row.seller_wants_marketing_support || [],
+    sellerContactAuthorization: !!row.seller_contact_authorization,
+
+    // ── Section 4: Property Detail Page — Key Highlights ──
+    keyHighlights: row.key_highlights || [],
+
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     videoUrls: row.video_urls || [],
     googleMapsLink: row.google_maps_link || null,
@@ -496,6 +576,20 @@ export function denormalizeListing(f) {
     drone_view_url: f.droneViewUrl || null,
     floor_plan_url: f.floorPlanUrl || null,
     floor_plan_caption: f.floorPlanCaption || null,
+
+    // ── Section 3C: Questions for Sellers / Listing Owners ──
+    seller_role_confirmation: f.sellerRoleConfirmation || null,
+    seller_exclusive_listing: f.sellerExclusiveListing || null,
+    seller_reason_for_selling: f.sellerReasonForSelling || null,
+    seller_minimum_acceptable_price: f.sellerMinimumAcceptablePrice !== "" && f.sellerMinimumAcceptablePrice != null ? Number(f.sellerMinimumAcceptablePrice) : null,
+    seller_currently_occupied: f.sellerCurrentlyOccupied || null,
+    seller_availability_date: f.sellerAvailabilityDate || null,
+    seller_documents_available: !!f.sellerDocumentsAvailable,
+    seller_wants_marketing_support: Array.isArray(f.sellerWantsMarketingSupport) ? f.sellerWantsMarketingSupport : [],
+    seller_contact_authorization: !!f.sellerContactAuthorization,
+
+    // ── Section 4: Property Detail Page — Key Highlights ──
+    key_highlights: Array.isArray(f.keyHighlights) ? f.keyHighlights.filter(Boolean) : [],
 
     updated_at: new Date().toISOString(),
   };

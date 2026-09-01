@@ -108,6 +108,38 @@ function LeadDrawer({ lead, onClose, onStageChange, onDelete, onNavigate }) {
           );
         })()}
 
+        {/* Renter Preferences (Section 3B) */}
+        {(() => {
+          const rows = [
+            lead.renterMoveInDate && { label: "Move-in Date", value: new Date(lead.renterMoveInDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) },
+            lead.renterMonthlyRentBudget && { label: "Expected Monthly Rent", value: `₹${lead.renterMonthlyRentBudget.toLocaleString("en-IN")}` },
+            lead.renterUpfrontBudget && { label: "Upfront Budget", value: `₹${lead.renterUpfrontBudget.toLocaleString("en-IN")}` },
+            lead.renterProfileType && { label: "Profile", value: lead.renterProfileType },
+            lead.renterFurnishingRequirement && { label: "Furnishing", value: lead.renterFurnishingRequirement },
+            lead.renterLeaseDuration && { label: "Lease Duration", value: lead.renterLeaseDuration },
+            lead.renterPetRequirement && { label: "Pets", value: lead.renterPetRequirement },
+            lead.renterParkingRequirement && { label: "Parking", value: lead.renterParkingRequirement },
+            lead.renterPreferredLocalities?.length > 0 && { label: "Preferred Localities", value: lead.renterPreferredLocalities.join(", ") },
+            lead.renterCommuteDestination && { label: "Commute Destination", value: lead.renterCommuteDestination },
+            lead.renterWantsBrokerageFree && { label: "Wants Brokerage-Free", value: "Yes" },
+            lead.renterWantsManagedRental && { label: "Wants Managed Rental", value: "Yes" },
+          ].filter(Boolean);
+          if (rows.length === 0) return null;
+          return (
+            <div className="mb-6">
+              <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "#6B7280" }}>Renter Preferences</p>
+              <div className="space-y-2 text-sm rounded-xl p-3.5" style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                {rows.map((r) => (
+                  <div key={r.label} className="flex justify-between gap-4">
+                    <span style={{ color: "#6B7280" }} className="shrink-0">{r.label}</span>
+                    <span className="text-right font-semibold" style={{ color: "#1F2937" }}>{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Real actions — actually opens the phone/email app */}
         <div className="flex gap-2 mb-6">
           <a href={`tel:${lead.phone}`} className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold" style={{ background: "#1565C0", color: "#FFFFFF" }}>
