@@ -91,6 +91,7 @@ const EMPTY_FORM = {
   transactionType: "Buy",
   listingType: "Sale",
   priceRaw: "",
+  priceOnRequest: false,
   bhk: [],
   area: "",
   floor: "",
@@ -338,6 +339,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       ...EMPTY_FORM,
       ...editingListing,
       area: areaNumeric,
+      priceRaw: editingListing.priceOnRequest ? "" : editingListing.priceRaw,
       listingCode: nullToEmpty(editingListing.listingCode),
       listingType: nullToEmpty(editingListing.listingType) || EMPTY_FORM.listingType,
       projectName: nullToEmpty(editingListing.projectName),
@@ -687,13 +689,13 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
   function pricePerSqftPreview() {
     const area = estimatedAreaSqft();
-    const price = Number(form.priceRaw) || 0;
+    const price = form.priceOnRequest ? 0 : Number(form.priceRaw) || 0;
     if (!area || !price) return null;
     return Math.round(price / area);
   }
 
   function emiPreview() {
-    const price = Number(form.priceRaw) || 0;
+    const price = form.priceOnRequest ? 0 : Number(form.priceRaw) || 0;
     const rate = Number(form.emiInterestRate) || 0;
     const years = Number(form.emiTenureYears) || 0;
     const downPct = Number(form.emiDownPaymentPercent) || 0;
@@ -708,14 +710,14 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   }
 
   function downPaymentPreview() {
-    const price = Number(form.priceRaw) || 0;
+    const price = form.priceOnRequest ? 0 : Number(form.priceRaw) || 0;
     const downPct = Number(form.emiDownPaymentPercent) || 0;
     if (!price) return null;
     return Math.round(price * (downPct / 100));
   }
 
   function rentalYieldPreview() {
-    const price = Number(form.priceRaw) || 0;
+    const price = form.priceOnRequest ? 0 : Number(form.priceRaw) || 0;
     const rent = Number(form.estimatedMonthlyRent) || 0;
     if (!price || !rent) return null;
     return ((rent * 12 / price) * 100).toFixed(2);
@@ -748,8 +750,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     e.preventDefault();
     setSaveError("");
 
-    if (!form.title || !form.location || !form.priceRaw) {
-      setSaveError("Title, location, and price are required.");
+    if (!form.title || !form.location || (!form.priceOnRequest && !form.priceRaw)) {
+      setSaveError('Title, location, and price are required — or check "Call for Details" if you\'d rather not list a price.');
       return;
     }
 
@@ -757,7 +759,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     try {
       const developerId = await resolveDeveloperId();
       const projectId = await resolveProjectId(developerId);
-      const payload = { ...form, price: priceLabelFromRaw(form.priceRaw), developerId, projectId };
+      const payload = { ...form, price: form.priceOnRequest ? "" : priceLabelFromRaw(form.priceRaw), developerId, projectId };
 
       const { error } = isEditing
         ? await updateListing(editingListing.dbId, payload)
@@ -1054,16 +1056,37 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label={`Price (${form.transactionType === "Rent" ? "₹ / month" : "₹ total"})`} required>
-              <TextInput type="number" min="0" value={form.priceRaw} onChange={(e) => set("priceRaw", e.target.value)} placeholder="e.g. 24000000" required />
+            <Field label={`Price (${form.transactionType === "Rent" ? "₹ / month" : "₹ total"})`} required={!form.priceOnRequest}>
+              <TextInput
+                type="number" min="0"
+                value={form.priceRaw}
+                onChange={(e) => set("priceRaw", e.target.value)}
+                placeholder="e.g. 24000000"
+                required={!form.priceOnRequest}
+                disabled={form.priceOnRequest}
+              />
             </Field>
           </div>
 
-          {form.priceRaw && (
+          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer -mt-2" style={{ color: "#1F2937" }}>
+            <input
+              type="checkbox"
+              checked={form.priceOnRequest}
+              onChange={(e) => set("priceOnRequest", e.target.checked)}
+              className="w-4 h-4 rounded accent-[#1565C0]"
+            />
+            Don't list a price — show "Call for Details" instead
+          </label>
+
+          {form.priceOnRequest ? (
+            <p className="text-xs" style={{ color: "#6B7280" }}>
+              Will display as <span className="font-bold" style={{ color: "#1565C0" }}>Call for Details</span> — buyers/tenants see no number and must contact the poster directly.
+            </p>
+          ) : form.priceRaw ? (
             <p className="text-xs" style={{ color: "#6B7280" }}>
               Will display as <span className="font-bold" style={{ color: "#1565C0" }}>{priceLabelFromRaw(form.priceRaw)}</span>
             </p>
-          )}
+          ) : null}
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Posted By">

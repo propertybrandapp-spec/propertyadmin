@@ -4,6 +4,13 @@ import { deleteFromR2 } from "./r2Upload";
 // Shown when a listing has no photos yet (e.g. just created, images still uploading)
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=380&fit=crop";
 
+// Shown instead of a numeric price when the poster/admin chooses not to list
+// one (the "Call for Details" checkbox next to Price in both listing forms).
+// price_value stays null in the DB in that case — see denormalizeListing/
+// normalizeListing below — so budget filters/sorts naturally treat it as "no
+// numeric price" rather than "₹0".
+export const PRICE_ON_REQUEST_LABEL = "Call for Details";
+
 // ── Section 2C: nearby-landmark categories ─────────────────────────────────
 // The 8 specific categories admins pick from when adding a nearby landmark...
 export const LANDMARK_CATEGORIES = ["School", "Hospital", "Market", "Railway Station", "Airport", "Metro/Bus Stop", "Business Hub", "Other"];
@@ -105,6 +112,7 @@ export function normalizeListing(row) {
     title: row.title,
     price: row.price_label,
     priceRaw: Number(row.price_value) || 0,
+    priceOnRequest: !!row.price_on_request,
     area: row.area_sqft ? `${row.area_sqft} sqft` : null,
     location: row.location,
     type: row.property_type,
@@ -385,8 +393,9 @@ export function denormalizeListing(f) {
     title: f.title,
     location: f.location,
     property_type: f.type,
-    price_label: f.price,
-    price_value: Number(f.priceRaw) || 0,
+    price_label: f.priceOnRequest ? PRICE_ON_REQUEST_LABEL : f.price,
+    price_value: f.priceOnRequest ? null : (Number(f.priceRaw) || 0),
+    price_on_request: !!f.priceOnRequest,
     status: f.moderationStatus || "Pending",
     posted_by: f.postedBy,
     transaction_type: f.transactionType,
