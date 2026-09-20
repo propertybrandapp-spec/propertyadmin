@@ -253,6 +253,7 @@ const EMPTY_FORM = {
   droneViewUrl: "",
   floorPlanUrl: "",
   floorPlanCaption: "",
+  brochureUrl: "",
   projectConstructionProgressPhotos: [],
 
   // ── Section 2H: Seller / Agent Information ──
@@ -464,6 +465,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       droneViewUrl: nullToEmpty(editingListing.droneViewUrl),
       floorPlanUrl: nullToEmpty(editingListing.floorPlanUrl),
       floorPlanCaption: nullToEmpty(editingListing.floorPlanCaption),
+      brochureUrl: nullToEmpty(editingListing.brochureUrl),
       projectConstructionProgressPhotos: Array.isArray(editingListing.project?.constructionProgressPhotos)
         ? editingListing.project.constructionProgressPhotos.map((p, i) => ({ ...p, _key: `existing-${i}` }))
         : [],
@@ -959,6 +961,21 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     setDocUploading(false);
     if (error) { setDocUploadError(error); return; }
     set("floorPlanUrl", url);
+  }
+
+  // ── Section 2G: brochure upload (PDF or image, same as project documents) ──
+  async function handleBrochureFileSelected(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validationError = validateDocumentFile(file);
+    if (validationError) { setDocUploadError(validationError); return; }
+    setDocUploadError("");
+    setDocUploading(true);
+    const { url, error } = await uploadToR2(file, "documents");
+    setDocUploading(false);
+    if (error) { setDocUploadError(error); return; }
+    set("brochureUrl", url);
   }
 
   // ── Section 2H: poster photo upload (used only when no agent is linked) ──
@@ -1970,7 +1987,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
         {/* ── Virtual Experience (Section 2G) ── */}
         <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           <div>
-            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Virtual Experience &amp; Floor Plan</h2>
+            <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Virtual Experience, Floor Plan &amp; Brochure</h2>
             <p className="text-xs mt-1" style={{ color: "#6B7280" }}>All optional. Project-wide Master Plan / Tower Location Map documents live under Project &amp; Developer Information above.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1992,6 +2009,15 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           </Field>
           <Field label="Floor Plan Caption">
             <TextInput value={form.floorPlanCaption} onChange={(e) => set("floorPlanCaption", e.target.value)} placeholder="e.g. 3BHK · 1450 sqft, with dimensions" />
+          </Field>
+          <Field label="Brochure" hint="Upload a PDF (or paste a link) — shows as a Download Brochure button on the listing.">
+            <div className="flex gap-2 items-center flex-wrap">
+              <TextInput value={form.brochureUrl} onChange={(e) => set("brochureUrl", e.target.value)} placeholder="Link, or upload →" />
+              <label className="text-xs font-bold px-3 py-2.5 rounded-lg text-center cursor-pointer shrink-0" style={{ background: "#F1F5F9", color: "#1F2937" }}>
+                Upload
+                <input type="file" accept="application/pdf,image/*" className="hidden" onChange={handleBrochureFileSelected} />
+              </label>
+            </div>
           </Field>
         </div>
 

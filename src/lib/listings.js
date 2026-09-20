@@ -329,6 +329,7 @@ export function normalizeListing(row) {
     droneViewUrl: row.drone_view_url || null,
     floorPlanUrl: row.floor_plan_url || null,
     floorPlanCaption: row.floor_plan_caption || null,
+    brochureUrl: row.brochure_url || null,
 
     // ── Section 3C: Questions for Sellers / Listing Owners ──
     // sellerReasonForSelling and sellerMinimumAcceptablePrice are sensitive —
@@ -585,6 +586,7 @@ export function denormalizeListing(f) {
     drone_view_url: f.droneViewUrl || null,
     floor_plan_url: f.floorPlanUrl || null,
     floor_plan_caption: f.floorPlanCaption || null,
+    brochure_url: f.brochureUrl || null,
 
     // ── Section 3C: Questions for Sellers / Listing Owners ──
     seller_role_confirmation: f.sellerRoleConfirmation || null,

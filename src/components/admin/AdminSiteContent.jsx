@@ -296,7 +296,7 @@ function HeroContentPanel() {
           <Field label="Highlighted phrase" hint="Shown in blue"><TextInput value={form.headlineHighlight} onChange={(e) => setForm({ ...form, headlineHighlight: e.target.value })} placeholder="#DiscoverInvestGrow" /></Field>
           <Field label="Suffix"><TextInput value={form.headlineSuffix} onChange={(e) => setForm({ ...form, headlineSuffix: e.target.value })} placeholder="Journey" /></Field>
         </div>
-        <Field label="Subtext"><TextInput value={form.subtext} onChange={(e) => setForm({ ...form, subtext: e.target.value })} placeholder="Discover. Invest. Build. Grow. Compare. Discuss. Decide." /></Field>
+        <Field label="Subtext"><TextInput value={form.subtext} onChange={(e) => setForm({ ...form, subtext: e.target.value })} placeholder="Find the Right Property. Make the Right Decision." /></Field>
 
         <p className="text-xs font-bold pt-2" style={{ color: "#1F2937" }}>Search tabs</p>
         <StringListEditor items={form.searchTabs} onChange={(searchTabs) => setForm({ ...form, searchTabs })} />
