@@ -109,6 +109,22 @@ export default function AdminLogin({ onLoginSuccess }) {
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
+
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                onClick={() => onLoginSuccess({
+                  id: "dev-admin-user",
+                  full_name: "Demo Admin",
+                  role: "Super Admin",
+                  email: "admin@propertybrands.in"
+                })}
+                className="w-full py-2.5 rounded-xl text-xs font-bold transition-all mt-2"
+                style={{ background: "#EFF6FF", color: "#1565C0", border: "1px dashed #BFDBFE" }}
+              >
+                ⚡ Quick Dev Admin Access
+              </button>
+            )}
           </form>
         </div>
 

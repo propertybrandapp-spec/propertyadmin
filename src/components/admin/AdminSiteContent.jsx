@@ -9,6 +9,7 @@ import {
   fetchAdminInvestmentOpportunities, createInvestmentOpportunity, updateInvestmentOpportunity, deleteInvestmentOpportunity,
   fetchAdminSiteSettings, updateSiteSettings,
   fetchAdminOfficeLocations, createOfficeLocation, updateOfficeLocation, deleteOfficeLocation,
+  fetchAdminBanners, createBanner, updateBanner, deleteBanner,
 } from "../../lib/siteContent";
 import {
   FIELD_TYPES, fetchAdminListingFieldOptions, createListingFieldOption, updateListingFieldOption, deleteListingFieldOption,
@@ -18,6 +19,7 @@ import { uploadToR2, validateImageFile } from "../../lib/r2Upload";
 const TABS = [
   { id: "hero", label: "Hero Content" },
   { id: "hero-cards", label: "Hero Cards" },
+  { id: "banners", label: "Ad Banners" },
   { id: "settings", label: "Contact & Social" },
   { id: "listing-options", label: "Listing Options" },
   { id: "tiers", label: "Partner Tiers" },
@@ -862,6 +864,20 @@ function InvestmentsPanel() {
 // Contact & Social Settings (singleton — no add/delete, just one edit form)
 // ═══════════════════════════════════════════════════════════════════════════
 
+const DEFAULT_SETTINGS_FORM = {
+  phone: "+91 94301 00000",
+  whatsapp: "+91 98765 00000",
+  email: "info@propertybrands.in",
+  website: "www.propertybrands.in",
+  address: "PropertyBrands Realty Services, Bhubaneswar, Odisha — 751001",
+  businessHours: "Mon – Sat, 9:00 AM – 7:00 PM",
+  facebook: "",
+  instagram: "",
+  linkedin: "",
+  youtube: "",
+  legalDisclaimer: "",
+};
+
 function SettingsPanel() {
   const [settings, setSettings] = useState(null); // null = loading
   const [form, setForm] = useState(null);
@@ -869,24 +885,24 @@ function SettingsPanel() {
   const [message, setMessage] = useState(null);
 
   function load() {
-    fetchAdminSiteSettings().then(({ data }) => { setSettings(data); setForm(data); });
+    fetchAdminSiteSettings().then(({ data }) => {
+      setSettings(data || false);
+      setForm(data || DEFAULT_SETTINGS_FORM);
+    });
   }
   useEffect(load, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setSaving(true); setMessage(null);
-    const { data, error } = await updateSiteSettings(settings.dbId, form);
+    const { data, error } = await updateSiteSettings(settings?.dbId || null, form);
     setSaving(false);
-    if (error) { setMessage({ type: "error", text: "Couldn't save." }); return; }
+    if (error) { setMessage({ type: "error", text: error.message || "Couldn't save." }); return; }
     setSettings(data); setForm(data);
     setMessage({ type: "success", text: "Saved." });
   }
 
-  if (settings === null) return <EmptyState label="Loading..." />;
-  if (!settings) {
-    return <EmptyState label="Site settings haven't been set up yet — run migration_009_site_settings.sql in Supabase, then reload this page." />;
-  }
+  if (settings === null || form === null) return <EmptyState label="Loading..." />;
 
   return (
     <Card>
@@ -1080,6 +1096,275 @@ function ListingOptionsPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Advertisement Banners
+// ═══════════════════════════════════════════════════════════════════════════
+
+const EMPTY_BANNER = {
+  title: "",
+  subtitle: "",
+  badge: "Featured / Ad",
+  image: "",
+  cta: "Explore Now",
+  linkType: "page",
+  linkValue: "search",
+  placement: "home",
+  active: true,
+  order: 0,
+};
+
+function BannerForm({ initial, onCancel, onSaved }) {
+  const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validationError = validateImageFile(file);
+    if (validationError) { setError(validationError); return; }
+    setUploading(true); setError("");
+    const { url, error: uploadError } = await uploadToR2(file, "listings");
+    setUploading(false);
+    if (uploadError) { setError("Image upload failed."); return; }
+    setForm({ ...form, image: url });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.title.trim()) { setError("Banner title is required."); return; }
+    setSaving(true); setError("");
+    const fn = form.dbId ? updateBanner(form.dbId, form) : createBanner(form);
+    const { data, error } = await fn;
+    setSaving(false);
+    if (error) { setError("Couldn't save banner."); return; }
+    onSaved(data);
+  }
+
+  return (
+    <Card>
+      <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
+        <h3 className="text-sm font-bold" style={{ color: "#1F2937" }}>
+          {form.dbId ? "Edit Advertisement Banner" : "New Advertisement Banner"}
+        </h3>
+
+        <Field label="Banner Title">
+          <TextInput
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="e.g. Exclusive Launch: Luxury Waterfront Residences"
+            required
+          />
+        </Field>
+
+        <Field label="Subtitle / Description">
+          <TextArea
+            rows={2}
+            value={form.subtitle || ""}
+            onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+            placeholder="e.g. Book directly to unlock special developer pricing & zero stamp duty."
+          />
+        </Field>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Badge Tag">
+            <TextInput
+              value={form.badge || ""}
+              onChange={(e) => setForm({ ...form, badge: e.target.value })}
+              placeholder="e.g. Featured Developer / Sponsored"
+            />
+          </Field>
+          <Field label="Placement Page">
+            <select
+              value={form.placement || "home"}
+              onChange={(e) => setForm({ ...form, placement: e.target.value })}
+              className="w-full text-sm px-3 py-2.5 rounded-lg focus:outline-none"
+              style={inputStyle}
+            >
+              <option value="home">Homepage (Between Content)</option>
+              <option value="search">Search & Listings Page</option>
+              <option value="detail">Property Detail Page</option>
+              <option value="all">All Pages</option>
+            </select>
+          </Field>
+        </div>
+
+        <Field label="Banner Image (High Resolution Photo)">
+          <div className="flex flex-col gap-2">
+            {form.image && (
+              <div className="relative rounded-xl overflow-hidden h-36 w-full max-w-md border border-slate-200">
+                <img src={form.image} alt="Banner preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, image: "" })}
+                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <input type="file" accept="image/*" onChange={handleImageChange} className="text-xs" />
+              {uploading && <span className="text-xs" style={{ color: "#6B7280" }}>Uploading to R2...</span>}
+            </div>
+            <TextInput
+              value={form.image || ""}
+              onChange={(e) => setForm({ ...form, image: e.target.value })}
+              placeholder="Or enter image URL (https://...)"
+              className="text-xs"
+            />
+          </div>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Button CTA Text">
+            <TextInput
+              value={form.cta || ""}
+              onChange={(e) => setForm({ ...form, cta: e.target.value })}
+              placeholder="Explore Now / Enquire Today"
+            />
+          </Field>
+          <Field label="Display Order">
+            <TextInput
+              type="number"
+              value={form.order || 0}
+              onChange={(e) => setForm({ ...form, order: Number(e.target.value) })}
+            />
+          </Field>
+        </div>
+
+        <Field label="Button Destination Link">
+          <LinkPicker
+            linkType={form.linkType}
+            linkValue={form.linkValue}
+            onChange={({ linkType, linkValue }) => setForm({ ...form, linkType, linkValue })}
+          />
+        </Field>
+
+        <label className="flex items-center gap-2 cursor-pointer pt-1">
+          <input
+            type="checkbox"
+            checked={form.active !== false}
+            onChange={(e) => setForm({ ...form, active: e.target.checked })}
+            className="w-4 h-4 rounded"
+            style={{ accentColor: "#1565C0" }}
+          />
+          <span className="text-xs font-semibold" style={{ color: "#1F2937" }}>Banner is active and visible</span>
+        </label>
+
+        <SaveBar onCancel={onCancel} saving={saving} error={error} />
+      </form>
+    </Card>
+  );
+}
+
+function BannersPanel() {
+  const [items, setItems] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
+
+  function load() {
+    fetchAdminBanners().then(({ data }) => setItems(data || []));
+  }
+  useEffect(load, []);
+
+  async function toggleActive(item) {
+    await updateBanner(item.dbId, { ...item, active: !item.active });
+    load();
+  }
+
+  async function handleDelete(dbId) {
+    await deleteBanner(dbId);
+    setConfirmId(null);
+    load();
+  }
+
+  if (items === null) return <EmptyState label="Loading banners..." />;
+
+  const PLACEMENT_LABELS = {
+    home: "Homepage",
+    search: "Search Page",
+    detail: "Property Detail",
+    all: "All Pages",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-xs" style={{ color: "#6B7280" }}>
+          Large promotional advertisement banners with custom photos and call-to-actions displayed between pages.
+        </p>
+        {!editing && (
+          <button
+            onClick={() => setEditing(EMPTY_BANNER)}
+            className="text-sm font-bold px-4 py-2 rounded-xl cursor-pointer"
+            style={{ background: "#1565C0", color: "#FFFFFF" }}
+          >
+            + Add Advertisement Banner
+          </button>
+        )}
+      </div>
+
+      {editing && (
+        <BannerForm
+          initial={editing.dbId ? editing : EMPTY_BANNER}
+          onCancel={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
+
+      {items.length === 0 && !editing && (
+        <EmptyState label="No advertisement banners yet — click '+ Add Advertisement Banner' to create one." />
+      )}
+
+      {items.map((b) => (
+        <Card key={b.id || b.dbId}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              {b.image ? (
+                <img src={b.image} alt="" className="w-20 h-14 rounded-lg object-cover shrink-0 border border-slate-200" />
+              ) : (
+                <div className="w-20 h-14 rounded-lg bg-slate-100 flex items-center justify-center text-xs text-slate-400 shrink-0">
+                  No Image
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <p className="text-sm font-bold" style={{ color: "#1F2937" }}>{b.title}</p>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#1565C0" }}>
+                    {PLACEMENT_LABELS[b.placement] || b.placement}
+                  </span>
+                  {b.badge && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#FEF3C7", color: "#B45309" }}>
+                      {b.badge}
+                    </span>
+                  )}
+                  <ActivePill active={b.active} />
+                </div>
+                <p className="text-xs truncate max-w-xl" style={{ color: "#6B7280" }}>
+                  {b.subtitle}
+                </p>
+                <p className="text-[11px] mt-1" style={{ color: "#9CA3AF" }}>
+                  Button: "{b.cta}" → {b.linkType === "page" ? `Page: ${b.linkValue}` : b.linkValue}
+                </p>
+              </div>
+            </div>
+            <RowActions
+              active={b.active}
+              onEdit={() => setEditing(b)}
+              onToggle={() => toggleActive(b)}
+              onDelete={() => handleDelete(b.dbId)}
+              confirming={confirmId === (b.id || b.dbId)}
+              setConfirming={(v) => setConfirmId(v ? (b.id || b.dbId) : null)}
+            />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Export
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1113,6 +1398,7 @@ export default function AdminSiteContent({ onNavigate, onLogout, adminProfile })
 
       {activeTab === "hero" && <HeroContentPanel />}
       {activeTab === "hero-cards" && <HeroCardsPanel />}
+      {activeTab === "banners" && <BannersPanel />}
       {activeTab === "settings" && <SettingsPanel />}
       {activeTab === "listing-options" && <ListingOptionsPanel />}
       {activeTab === "tiers" && <TiersPanel />}

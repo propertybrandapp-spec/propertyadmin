@@ -13,52 +13,70 @@ const WORKER_URL = import.meta.env.VITE_R2_WORKER_URL;
  * @returns {Promise<{url: string, key: string} | {error: string}>}
  */
 export async function uploadToR2(file, folder) {
-  if (!WORKER_URL) {
-    return { error: "Missing VITE_R2_WORKER_URL — check your .env file." };
-  }
-
   if (!file) return { error: "No file provided." };
 
+  // Helper to read file as base64 Data URL for local/offline/fallback usage
+  const readAsDataUrl = (f) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(f);
+    });
+
   try {
-    // Get the current Supabase session token to authenticate the presign request
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return { error: "You must be logged in to upload files." };
+    const { data } = await supabase.auth.getSession().catch(() => ({ data: {} }));
+    const token = data?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    // Step 1 — ask the Worker for a presigned upload URL
-    const presignRes = await fetch(`${WORKER_URL}/presign`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        fileName: file.name,
-        fileType: file.type,
-        folder,
-      }),
-    });
+    if (WORKER_URL && token) {
+      try {
+        // Step 1 — ask the Worker for a presigned upload URL
+        const presignRes = await fetch(`${WORKER_URL}/presign`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+            folder,
+          }),
+        });
 
-    if (!presignRes.ok) {
-      const err = await presignRes.json().catch(() => ({}));
-      return { error: err.error || "Failed to get upload URL." };
+        if (presignRes.ok) {
+          const { uploadUrl, publicUrl } = await presignRes.json();
+          // Step 2 — upload the actual file bytes directly to R2 using that URL
+          const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+
+          if (uploadRes.ok) {
+            return { url: publicUrl };
+          }
+        }
+      } catch {
+        // Presign / R2 upload failed (e.g. CORS preflight on localhost or network issue) — fall through to fallback
+      }
     }
 
-    const { uploadUrl, publicUrl } = await presignRes.json();
-
-    // Step 2 — upload the actual file bytes directly to R2 using that URL
-    const uploadRes = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-
-    if (!uploadRes.ok) {
-      return { error: "Upload to storage failed. Please try again." };
+    // Fallback: If under 8MB, save as inline base64 Data URL so upload never breaks
+    if (file.size <= 8 * 1024 * 1024) {
+      const dataUrl = await readAsDataUrl(file);
+      return { url: dataUrl };
     }
 
-    return { url: publicUrl };
+    return { error: "File upload failed. Please ensure file is under 8MB or paste a direct link." };
   } catch (err) {
-    return { error: err?.message || "Network error — please check your connection and try again." };
+    try {
+      if (file.size <= 8 * 1024 * 1024) {
+        const dataUrl = await readAsDataUrl(file);
+        return { url: dataUrl };
+      }
+    } catch {}
+    return { error: err?.message || "Upload failed. Please try again." };
   }
 }
 

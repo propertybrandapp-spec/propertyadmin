@@ -440,9 +440,12 @@ export async function updateSiteSettings(id, settings) {
     legal_disclaimer: settings.legalDisclaimer || null,
     updated_at: new Date().toISOString(),
   };
-  const { data, error } = await safeQuery(
-    supabase.from("site_settings").update(payload).eq("id", id).select().single()
-  );
+
+  const query = id
+    ? supabase.from("site_settings").update(payload).eq("id", id).select().single()
+    : supabase.from("site_settings").insert(payload).select().single();
+
+  const { data, error } = await safeQuery(query);
   if (error) return { data: null, error };
   return { data: normalizeSiteSettings(data), error: null };
 }
@@ -501,4 +504,134 @@ export async function updateOfficeLocation(id, office) {
 export async function deleteOfficeLocation(id) {
   const { error } = await safeQuery(supabase.from("office_locations").delete().eq("id", id));
   return { error };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Advertisement Banners (Big promo banners across pages)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const LOCAL_BANNERS_KEY = "propertybrands_ad_banners";
+
+export const DEFAULT_AD_BANNERS = [
+  {
+    id: "banner-1",
+    dbId: "banner-1",
+    title: "Exclusive Launch: Luxury Golf Penthouses & Apartments",
+    subtitle: "Direct booking discounts up to ₹5,00,000 + 0% processing fee on partner bank loans.",
+    badge: "Featured Developer",
+    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80",
+    cta: "Explore Featured Deals",
+    linkType: "page",
+    linkValue: "search",
+    placement: "home",
+    active: true,
+    order: 1,
+  },
+  {
+    id: "banner-2",
+    dbId: "banner-2",
+    title: "Advertise Your Real Estate Project on PropertyBrands",
+    subtitle: "Get featured in front of 50,000+ verified home buyers and serious investors every month.",
+    badge: "Partner Spotlight",
+    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop&q=80",
+    cta: "Partner with Us",
+    linkType: "page",
+    linkValue: "channel-partner",
+    placement: "search",
+    active: true,
+    order: 2,
+  },
+];
+
+function normalizeBanner(row) {
+  return {
+    id: row.id,
+    dbId: row.id,
+    title: row.title,
+    subtitle: row.subtitle || "",
+    badge: row.badge || "Sponsored",
+    image: row.image_url || "",
+    cta: row.cta_label || "Explore Now",
+    linkType: row.link_type || "page",
+    linkValue: row.link_value || "search",
+    placement: row.placement || "home",
+    active: row.is_active !== false,
+    order: row.display_order || 0,
+    createdAt: row.created_at,
+  };
+}
+
+export async function fetchAdminBanners() {
+  const { data, error } = await safeQuery(
+    supabase.from("advertisement_banners").select("*").order("display_order", { ascending: true })
+  );
+  if (!error && data && data.length > 0) {
+    return { data: data.map(normalizeBanner), error: null };
+  }
+  const local = typeof window !== "undefined" ? localStorage.getItem(LOCAL_BANNERS_KEY) : null;
+  if (local) {
+    try { return { data: JSON.parse(local), error: null }; } catch {}
+  }
+  return { data: DEFAULT_AD_BANNERS, error: null };
+}
+
+export async function createBanner(banner) {
+  const payload = {
+    title: banner.title,
+    subtitle: banner.subtitle || null,
+    badge: banner.badge || "Sponsored",
+    image_url: banner.image,
+    cta_label: banner.cta || "Explore Now",
+    link_type: banner.linkType || "page",
+    link_value: banner.linkValue || "search",
+    placement: banner.placement || "home",
+    is_active: banner.active !== false,
+    display_order: banner.order || 0,
+  };
+  const { data, error } = await safeQuery(
+    supabase.from("advertisement_banners").insert(payload).select().single()
+  );
+  if (!error && data) {
+    return { data: normalizeBanner(data), error: null };
+  }
+  // Local fallback
+  const newBanner = { ...banner, id: `local-${Date.now()}`, dbId: `local-${Date.now()}` };
+  const current = (await fetchAdminBanners()).data;
+  const updated = [...current, newBanner];
+  if (typeof window !== "undefined") localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(updated));
+  return { data: newBanner, error: null };
+}
+
+export async function updateBanner(id, banner) {
+  const payload = {
+    title: banner.title,
+    subtitle: banner.subtitle || null,
+    badge: banner.badge || "Sponsored",
+    image_url: banner.image,
+    cta_label: banner.cta || "Explore Now",
+    link_type: banner.linkType || "page",
+    link_value: banner.linkValue || "search",
+    placement: banner.placement || "home",
+    is_active: banner.active !== false,
+    display_order: banner.order || 0,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await safeQuery(
+    supabase.from("advertisement_banners").update(payload).eq("id", id).select().single()
+  );
+  if (!error && data) {
+    return { data: normalizeBanner(data), error: null };
+  }
+  const current = (await fetchAdminBanners()).data;
+  const updated = current.map((b) => (b.id === id || b.dbId === id ? { ...b, ...banner } : b));
+  if (typeof window !== "undefined") localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(updated));
+  return { data: { ...banner, id, dbId: id }, error: null };
+}
+
+export async function deleteBanner(id) {
+  await safeQuery(supabase.from("advertisement_banners").delete().eq("id", id));
+  const current = (await fetchAdminBanners()).data;
+  const updated = current.filter((b) => b.id !== id && b.dbId !== id);
+  if (typeof window !== "undefined") localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(updated));
+  return { error: null };
 }

@@ -386,6 +386,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       landmark: nullToEmpty(editingListing.landmark),
       city: nullToEmpty(editingListing.city),
       pincode: nullToEmpty(editingListing.pincode),
+      googleMapsLink: nullToEmpty(editingListing.googleMapsLink),
       addressVisibility: nullToEmpty(editingListing.addressVisibility) || EMPTY_FORM.addressVisibility,
       nearbyLandmarks: Array.isArray(editingListing.nearbyLandmarks)
         ? editingListing.nearbyLandmarks.map((l, i) => ({ ...l, _key: `existing-${i}` }))
@@ -494,6 +495,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   const [availableAgents, setAvailableAgents] = useState([]);
   const [docUploading, setDocUploading] = useState(false);
   const [docUploadError, setDocUploadError] = useState("");
+  const [brochureUploading, setBrochureUploading] = useState(false);
+  const [brochureUploadError, setBrochureUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [photoWarnings, setPhotoWarnings] = useState([]);
@@ -963,18 +966,18 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     set("floorPlanUrl", url);
   }
 
-  // ── Section 2G: brochure upload (PDF or image, same as project documents) ──
+  // ── Section 2G: brochure upload (PDF or image, straight to R2) ──
   async function handleBrochureFileSelected(e) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     const validationError = validateDocumentFile(file);
-    if (validationError) { setDocUploadError(validationError); return; }
-    setDocUploadError("");
-    setDocUploading(true);
+    if (validationError) { setBrochureUploadError(validationError); return; }
+    setBrochureUploadError("");
+    setBrochureUploading(true);
     const { url, error } = await uploadToR2(file, "documents");
-    setDocUploading(false);
-    if (error) { setDocUploadError(error); return; }
+    setBrochureUploading(false);
+    if (error) { setBrochureUploadError(error); return; }
     set("brochureUrl", url);
   }
 
@@ -2014,17 +2017,18 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             <div className="flex gap-2 items-center flex-wrap">
               <TextInput value={form.brochureUrl} onChange={(e) => set("brochureUrl", e.target.value)} placeholder="Link, or upload →" />
               <label className="text-xs font-bold px-3 py-2.5 rounded-lg text-center cursor-pointer shrink-0" style={{ background: "#F1F5F9", color: "#1F2937" }}>
-                Upload
-                <input type="file" accept="application/pdf,image/*" className="hidden" onChange={handleBrochureFileSelected} />
+                {brochureUploading ? "Uploading…" : "Upload"}
+                <input type="file" accept="application/pdf,image/*" className="hidden" onChange={handleBrochureFileSelected} disabled={brochureUploading} />
               </label>
             </div>
+            {brochureUploadError && <p className="text-xs font-semibold mt-1.5" style={{ color: "#DC2626" }}>{brochureUploadError}</p>}
           </Field>
         </div>
 
         {/* ── Videos ── */}
         <div className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Videos</h2>
-          <p className="text-xs" style={{ color: "#6B7280" }}>Paste links to walkthrough videos (YouTube, Vimeo, etc.) — optional.</p>
+          <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Videos (Location Video &amp; Property Walkthrough)</h2>
+          <p className="text-xs" style={{ color: "#6B7280" }}>Paste links to location / neighborhood video tours or property walkthroughs (YouTube, Vimeo) — powers the interactive &quot;Watch Location Video&quot; button on the property page.</p>
           <div className="flex flex-wrap gap-2">
             {form.videoUrls.map((url) => (
               <span key={url} className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#F1F5F9", color: "#1F2937" }}>

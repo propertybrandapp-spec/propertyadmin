@@ -67,11 +67,11 @@ export default function AdminApp() {
 
   function handleLoginSuccess(profile) {
     setAdminProfile(profile);
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    setSession({ user: { id: profile.id, email: profile.email } });
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut().catch(() => {});
     setSession(null);
     setAdminProfile(null);
   }
@@ -98,7 +98,7 @@ export default function AdminApp() {
   }
 
   // ── Not authenticated ──
-  if (!session || !adminProfile) {
+  if (!adminProfile) {
     return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
   }
 
