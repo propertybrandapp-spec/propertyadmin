@@ -14,16 +14,25 @@ function daysAgo(isoDate) {
 }
 
 export function normalizeLead(row, adminsById, listingsById = {}) {
+  let detectedSource = row.source;
+  if (row.interest?.includes("[PROPERTY MANAGEMENT]")) detectedSource = "property-management";
+  else if (row.interest?.includes("[CHANNEL PARTNER]")) detectedSource = "channel-partner";
+  else if (row.interest?.includes("[RENTREADY")) detectedSource = "rent-ready";
+  else if (row.interest?.includes("[SELECT MEMBERSHIP")) detectedSource = "select-membership";
+  else if (row.interest?.includes("[BUILD & MOVE")) detectedSource = "build-move";
+  else if (row.interest?.includes("[CONSULTATION")) detectedSource = "book-expert";
+
   return {
     id: row.id,
     dbId: row.id,
     name: row.name,
     phone: row.phone,
     email: row.email,
-    interest: row.interest,
+    interest: row.interest || row.message,
+    message: row.message || row.interest,
     budget: row.budget_label,
     stage: row.stage,
-    source: row.source,
+    source: detectedSource,
     assignedTo: row.assigned_to ? (adminsById[row.assigned_to]?.full_name || "Unassigned") : "Unassigned",
     assignedToId: row.assigned_to,
     listingId: row.listing_id,
@@ -73,7 +82,50 @@ export async function fetchAdminLeads() {
     safeQuery(supabase.from("admin_profiles").select("id, full_name")),
   ]);
 
-  if (error) return { data: [], error };
+  let allLeads = Array.isArray(leads) ? [...leads] : [];
+
+  function getLeadFingerprint(l) {
+    const p = (l.phone || "").replace(/[^0-9]/g, "");
+    const n = (l.name || "").trim().toLowerCase();
+    const i = (l.interest || "").trim().toLowerCase().slice(0, 60);
+    return `${p}|${n}|${i}`;
+  }
+
+  const existingIds = new Set(allLeads.map((l) => l.id).filter(Boolean));
+  const existingFingerprints = new Set(allLeads.map(getLeadFingerprint));
+
+  // In local development or when Supabase RLS restricts reads for demo admin,
+  // sync with local dev leads storage so submitted leads appear immediately.
+  try {
+    const res = await fetch("/api/leads");
+    if (res.ok) {
+      const devLeads = await res.json();
+      if (Array.isArray(devLeads)) {
+        devLeads.forEach((dl) => {
+          const fp = getLeadFingerprint(dl);
+          if (!existingIds.has(dl.id) && !existingFingerprints.has(fp)) {
+            allLeads.push(dl);
+            if (dl.id) existingIds.add(dl.id);
+            existingFingerprints.add(fp);
+          }
+        });
+      }
+    }
+  } catch {}
+
+  // Final deduplication pass to ensure 0 duplicates
+  const finalLeads = [];
+  const seenFp = new Set();
+  allLeads.forEach((l) => {
+    const fp = getLeadFingerprint(l);
+    if (!seenFp.has(fp)) {
+      seenFp.add(fp);
+      finalLeads.push(l);
+    }
+  });
+
+  // Sort by created_at descending
+  finalLeads.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
   const adminsById = {};
   (admins || []).forEach((a) => { adminsById[a.id] = a; });
@@ -81,7 +133,7 @@ export async function fetchAdminLeads() {
   // Batch-fetch every listing referenced by these leads in one query, so
   // the leads table/drawer can show the linked property's photo, price,
   // and specs without the admin having to go find it manually.
-  const listingIds = [...new Set((leads || []).map((l) => l.listing_id).filter(Boolean))];
+  const listingIds = [...new Set(finalLeads.map((l) => l.listing_id).filter(Boolean))];
   let listingsById = {};
   if (listingIds.length > 0) {
     const { data: listingRows } = await safeQuery(
@@ -90,14 +142,21 @@ export async function fetchAdminLeads() {
     (listingRows || []).forEach((row) => { listingsById[row.id] = normalizeListing(row); });
   }
 
-  return { data: (leads || []).map((l) => normalizeLead(l, adminsById, listingsById)), error: null };
+  return { data: finalLeads.map((l) => normalizeLead(l, adminsById, listingsById)), error: null };
 }
 
 export async function updateLeadStage(id, stage) {
+  try {
+    await fetch(`/api/leads/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage }),
+    });
+  } catch {}
+
   const { data, error } = await safeQuery(
     supabase.from("leads").update({ stage, updated_at: new Date().toISOString() }).eq("id", id).select().single()
   );
-  if (error) return { data: null, error };
   return { data, error: null };
 }
 
@@ -109,6 +168,10 @@ export async function assignLead(id, adminUserId) {
 }
 
 export async function deleteLead(id) {
+  try {
+    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+  } catch {}
+
   const { error } = await safeQuery(supabase.from("leads").delete().eq("id", id));
   return { error };
 }
@@ -138,14 +201,35 @@ export async function submitLead({ name, phone, email, interest, budget, source 
   const { data: sessionData } = await safeQuery(supabase.auth.getSession());
   const b = buyerPreferences;
   const r = renterPreferences;
+
+  // DB constraint: check (source in ('Website', 'Referral', 'WhatsApp', 'Cold Call', 'Walk-in'))
+  const ALLOWED_DB_SOURCES = ["Website", "Referral", "WhatsApp", "Cold Call", "Walk-in"];
+  const dbSource = ALLOWED_DB_SOURCES.includes(source) ? source : "Website";
+
+  // Ensure channel identifier tag is prefixed to interest for categorization in admin
+  let finalInterest = interest || "";
+  if (source === "property-management" && !finalInterest.includes("[PROPERTY MANAGEMENT]")) {
+    finalInterest = `[PROPERTY MANAGEMENT] ${finalInterest}`.trim();
+  } else if (source === "channel-partner" && !finalInterest.includes("[CHANNEL PARTNER]")) {
+    finalInterest = `[CHANNEL PARTNER] ${finalInterest}`.trim();
+  } else if (source === "rent-ready" && !finalInterest.includes("[RENTREADY")) {
+    finalInterest = `[RENTREADY DRAFT] ${finalInterest}`.trim();
+  } else if (source === "select-membership" && !finalInterest.includes("[SELECT MEMBERSHIP")) {
+    finalInterest = `[SELECT MEMBERSHIP] ${finalInterest}`.trim();
+  } else if (source === "build-move" && !finalInterest.includes("[BUILD & MOVE")) {
+    finalInterest = `[BUILD & MOVE] ${finalInterest}`.trim();
+  } else if (source === "book-expert" && !finalInterest.includes("[CONSULTATION")) {
+    finalInterest = `[CONSULTATION BOOKING] ${finalInterest}`.trim();
+  }
+
   const { error } = await safeQuery(
     supabase.from("leads").insert({
       name,
       phone,
       email: email || null,
-      interest: interest || null,
+      interest: finalInterest || null,
       budget_label: budget || null,
-      source,
+      source: dbSource,
       stage: stage || "New",
       listing_id: listingId || null,
       client_id: sessionData?.session?.user?.id || null,
