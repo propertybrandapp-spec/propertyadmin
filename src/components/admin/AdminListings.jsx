@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "./AdminLayout";
 import { fetchAdminListings, updateListingStatus, deleteListing } from "../../lib/listings";
+import { budgetSteps, formatBudget, matchesBudget, matchesLocation } from "../../lib/searchFilters";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -123,6 +124,9 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
   const [activeFilter, setActiveFilter] = useState("All");
   const [selected, setSelected] = useState([]);
   const [search, setSearch] = useState("");
+  const [txFilter, setTxFilter] = useState("All");   // All | Buy | Rent — price filter only makes sense within one
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(null);     // null = no upper limit
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -142,7 +146,11 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
 
   const filtered = listings.filter((l) => {
     if (activeFilter !== "All" && l.moderationStatus !== activeFilter) return false;
-    if (search && !l.title.toLowerCase().includes(search.toLowerCase()) && !l.location.toLowerCase().includes(search.toLowerCase())) return false;
+    // Search by title, location, city, locality, pincode, project, developer or listing code.
+    // Every word typed has to match somewhere, in any order ("patia bhubaneswar" works).
+    if (search.trim() && !matchesLocation(l, search) && !(l.listingCode || "").toLowerCase().includes(search.trim().toLowerCase())) return false;
+    if (txFilter !== "All" && l.transactionType !== txFilter) return false;
+    if (txFilter !== "All" && !matchesBudget(l, [minPrice, maxPrice])) return false;
     return true;
   });
 
@@ -224,11 +232,37 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search listings..."
+              placeholder="Search title, location, code..."
               className="flex-1 text-sm bg-transparent focus:outline-none"
               style={{ color: "#1F2937" }}
             />
           </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={txFilter} onChange={(e) => { setTxFilter(e.target.value); setMinPrice(0); setMaxPrice(null); }}
+              aria-label="Sale or rent" className="rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+              style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", color: "#1F2937" }}>
+              <option value="All">Sale &amp; Rent</option>
+              <option value="Buy">For Sale</option>
+              <option value="Rent">For Rent</option>
+            </select>
+            {txFilter !== "All" && (
+              <>
+                <select value={minPrice > 0 ? String(minPrice) : ""} aria-label="Minimum price"
+                  onChange={(e) => { const v = e.target.value === "" ? 0 : Number(e.target.value); setMinPrice(v); if (maxPrice !== null && v > maxPrice) setMaxPrice(null); }}
+                  className="rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+                  style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", color: "#1F2937" }}>
+                  <option value="">No min</option>
+                  {budgetSteps(txFilter).map((v) => <option key={v} value={v}>{formatBudget(v, txFilter)}</option>)}
+                </select>
+                <select value={maxPrice !== null ? String(maxPrice) : ""} aria-label="Maximum price"
+                  onChange={(e) => { const v = e.target.value === "" ? null : Number(e.target.value); setMaxPrice(v); if (v !== null && minPrice > v) setMinPrice(0); }}
+                  className="rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+                  style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", color: "#1F2937" }}>
+                  <option value="">No max</option>
+                  {budgetSteps(txFilter).map((v) => <option key={v} value={v}>{formatBudget(v, txFilter)}</option>)}
+                </select>
+              </>
+            )}
           <button
             onClick={() => onNavigate("listings-form", null)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
@@ -241,6 +275,7 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
             </svg>
             Add Listing
           </button>
+          </div>
         </div>
 
         {/* ── Filter Tabs ── */}
@@ -380,7 +415,7 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <span className="text-4xl mb-3">🔍</span>
               <p className="text-sm font-bold" style={{ color: "#1F2937" }}>No listings found</p>
-              <p className="text-xs mt-1" style={{ color: "#6B7280" }}>Try adjusting your search or filter</p>
+              <p className="text-xs mt-1" style={{ color: "#6B7280" }}>Try adjusting your search, location, price or status filter</p>
             </div>
           )}
 
