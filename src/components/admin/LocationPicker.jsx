@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
+import { parseGoogleMapsLocation, googleMapsPinUrl } from "../../lib/googleMaps";
 
 function pinIcon() {
   return L.divIcon({
@@ -75,8 +76,22 @@ export default function LocationPicker({ latitude, longitude, onChange }) {
   async function handleSearch(e) {
     e.preventDefault();
     if (!search.trim() || searching) return;
-    setSearching(true);
     setSearchError("");
+
+    // A pasted Google Maps link (or plain "lat, lng") drops the pin right there —
+    // no geocoding needed, and it's exactly the spot Google Maps shows.
+    const fromGoogle = parseGoogleMapsLocation(search);
+    if (fromGoogle?.short) {
+      setSearchError("Short Google links (maps.app.goo.gl) don't contain the location. Open the link, then copy the full address from your browser's address bar — or just type the address here.");
+      return;
+    }
+    if (fromGoogle) {
+      pick(fromGoogle.latitude, fromGoogle.longitude);
+      setSearch("");
+      return;
+    }
+
+    setSearching(true);
     try {
       const results = await geocode(search);
       if (!results || results.length === 0) {
@@ -91,6 +106,18 @@ export default function LocationPicker({ latitude, longitude, onChange }) {
     }
   }
 
+  const [locating, setLocating] = useState(false);
+  function useMyLocation() {
+    if (!navigator.geolocation) { setSearchError("Your browser can't share your location — search for the address or click on the map instead."); return; }
+    setLocating(true);
+    setSearchError("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { pick(pos.coords.latitude, pos.coords.longitude); setLocating(false); },
+      () => { setSearchError("Couldn't get your current location — allow location access, or search for the address instead."); setLocating(false); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
   return (
     <div className="space-y-2.5">
       <div className="flex gap-2">
@@ -99,7 +126,7 @@ export default function LocationPicker({ latitude, longitude, onChange }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleSearch(e); }}
-          placeholder="Search an address or locality to jump the map there..."
+          placeholder="Search an address, paste a Google Maps link, or enter lat, lng..."
           className="flex-1 text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2"
           style={inputStyle}
         />
@@ -139,6 +166,16 @@ export default function LocationPicker({ latitude, longitude, onChange }) {
         <p className="text-xs" style={{ color: "#6B7280" }}>
           {position ? "Drag the pin or click elsewhere on the map to adjust it." : "Click anywhere on the map to drop a pin, or search above."}
         </p>
+        <button type="button" onClick={useMyLocation} disabled={locating}
+          className="text-xs font-bold hover:underline disabled:opacity-60" style={{ color: "#1565C0" }}>
+          {locating ? "Locating…" : "Use my current location"}
+        </button>
+        {position && (
+          <a href={googleMapsPinUrl(latitude, longitude)} target="_blank" rel="noopener noreferrer"
+            className="text-xs font-bold hover:underline" style={{ color: "#1565C0" }}>
+            Check in Google Maps ↗
+          </a>
+        )}
         {position && (
           <button type="button" onClick={() => onChange({ latitude: null, longitude: null })}
             className="text-xs font-bold hover:underline" style={{ color: "#DC2626" }}>

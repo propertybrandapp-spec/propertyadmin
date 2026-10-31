@@ -152,7 +152,26 @@ export function matchesLocation(property, query) {
   const words = normalize(query).split(" ").filter((w) => w && !LOCATION_STOPWORDS.has(w));
   if (words.length === 0) return true;
   const haystack = listingLocationText(property);
-  return words.every((w) => haystack.includes(w));
+  return words.every((w) => wordVariants(w).some((v) => haystack.includes(v)));
+}
+
+// Different spellings people use for the same place — searching either one
+// finds listings typed with the other (e.g. "Ghaziabad" finds "Gaziabad").
+const SPELLING_GROUPS = [
+  ["ghaziabad", "gaziabad"],
+  ["dharamshala", "dharmshala", "dharamsala", "dharmsala"],
+  ["prayagraj", "pryagraj", "allahabad"],
+  ["gurgaon", "gurugram"],
+  ["gujarat", "gujrat"],
+  ["bhubaneswar", "bhubaneshwar", "bhubaneswer"],
+  ["new chandigarh", "newchandigarh"],
+  ["rishikesh", "hrishikesh"],
+  ["mohali", "sas nagar", "sahibzada ajit singh nagar"],
+];
+const VARIANTS = new Map();
+SPELLING_GROUPS.forEach((group) => group.forEach((w) => VARIANTS.set(w, group)));
+function wordVariants(w) {
+  return VARIANTS.get(w) || [w];
 }
 
 // Case-insensitive equality for chip-style filters (property type etc.).
