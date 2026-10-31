@@ -21,6 +21,7 @@ export function normalizeLead(row, adminsById, listingsById = {}) {
   else if (row.interest?.includes("[SELECT MEMBERSHIP")) detectedSource = "select-membership";
   else if (row.interest?.includes("[BUILD & MOVE")) detectedSource = "build-move";
   else if (row.interest?.includes("[CONSULTATION")) detectedSource = "book-expert";
+  else if (row.interest?.includes("[BROCHURE REQUEST]")) detectedSource = "brochure-request";
 
   return {
     id: row.id,
