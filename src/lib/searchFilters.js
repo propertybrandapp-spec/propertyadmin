@@ -6,6 +6,8 @@
 // Prices are always plain rupees (Buy = total price, Rent = per month), the
 // same unit the `price_value` column and `priceRaw` use.
 
+import { SERVICE_CITIES } from "./cities.js";
+
 const LAC = 100000;
 const CRORE = 10000000;
 const THOUSAND = 1000;
@@ -133,26 +135,66 @@ function normalize(s) {
 
 const LOCATION_STOPWORDS = new Set(["in", "at", "near", "nearby", "around", "of", "the", "and"]);
 
-// Everything about a listing that says "where it is" — the location text the
-// owner typed plus the structured city/locality/pincode/landmark fields and
-// project/developer names — joined into one searchable string.
-export function listingLocationText(p) {
+// The listing's *place* fields — where it actually is.
+function listingPlaceText(p) {
+  return normalize([p.location, p.city, p.locality, p.pincode, p.landmark].filter(Boolean).join(" "));
+}
+
+// Names attached to the listing — project, developer, title, nearby landmarks.
+function listingNameText(p) {
   const landmarks = Array.isArray(p.nearbyLandmarks) ? p.nearbyLandmarks.map((l) => l?.name) : [];
-  return normalize([
-    p.location, p.city, p.locality, p.pincode, p.landmark,
-    p.projectName, p.developerName, p.towerBlock, p.title,
-    ...landmarks,
-  ].filter(Boolean).join(" "));
+  return normalize([p.projectName, p.developerName, p.towerBlock, p.title, ...landmarks].filter(Boolean).join(" "));
+}
+
+// Kept for other callers: everything about a listing that says "where it is".
+export function listingLocationText(p) {
+  return `${listingPlaceText(p)} ${listingNameText(p)}`.trim();
+}
+
+// Cities we recognise by name. A search that names a city must match the
+// listing's own place fields — otherwise a project in Raipur that merely
+// mentions "Bhubaneswar" in a title, developer name or landmark would show up
+// when someone filters by Bhubaneswar.
+const EXTRA_CITIES = [
+  "delhi", "new delhi", "bangalore", "bengaluru", "hyderabad", "pune", "kolkata", "chennai", "cuttack", "puri",
+  "raipur", "bhilai", "jaipur", "lucknow", "indore", "bhopal", "ahmedabad", "surat", "patna", "guwahati",
+  "visakhapatnam", "coimbatore", "kochi", "nagpur", "vadodara", "jamshedpur", "rourkela", "sambalpur", "berhampur",
+];
+const KNOWN_CITIES = Array.from(new Set([
+  ...SERVICE_CITIES.map((c) => normalize(c)),
+  ...EXTRA_CITIES,
+])).filter(Boolean);
+
+function citiesIn(text) {
+  const padded = ` ${text} `;
+  const found = new Set();
+  KNOWN_CITIES.forEach((c) => {
+    // also count every spelling variant of this city
+    const names = [c, ...(VARIANTS.get(c) || [])];
+    if (names.some((n) => padded.includes(` ${n} `))) found.add(c);
+  });
+  return found;
 }
 
 // "Patia, Bhubaneswar", "patia bhubaneswar", "Bhubaneswar 751024" and
 // "Salt Lake City" all work: every meaningful word in the search has to
-// appear somewhere in the listing's location info, in any order.
+// appear in the listing, in any order. When the search names a city, the
+// listing's place fields have to be in that city.
 export function matchesLocation(property, query) {
   const words = normalize(query).split(" ").filter((w) => w && !LOCATION_STOPWORDS.has(w));
   if (words.length === 0) return true;
-  const haystack = listingLocationText(property);
-  return words.every((w) => wordVariants(w).some((v) => haystack.includes(v)));
+  const has = (text) => words.every((w) => wordVariants(w).some((v) => text.includes(v)));
+
+  const place = listingPlaceText(property);
+  if (has(place)) return true;
+
+  const queryCities = citiesIn(words.join(" "));
+  if (queryCities.size > 0) {
+    // Listing's place fields name some other city -> it's not in the searched city.
+    if (citiesIn(place).size > 0) return false;
+    // Place fields carry no city at all (e.g. just "Patia") -> let names decide.
+  }
+  return has(`${place} ${listingNameText(property)}`);
 }
 
 // Different spellings people use for the same place — searching either one
@@ -163,7 +205,7 @@ const SPELLING_GROUPS = [
   ["prayagraj", "pryagraj", "allahabad"],
   ["gurgaon", "gurugram"],
   ["gujarat", "gujrat"],
-  ["bhubaneswar", "bhubaneshwar", "bhubaneswer"],
+  ["bhubaneswar", "bhubaneshwar", "bhubaneswer", "bbsr"],
   ["new chandigarh", "newchandigarh"],
   ["rishikesh", "hrishikesh"],
   ["mohali", "sas nagar", "sahibzada ajit singh nagar"],

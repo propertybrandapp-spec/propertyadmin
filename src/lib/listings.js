@@ -682,21 +682,47 @@ function daysAgo(isoDate) {
 const LISTING_SELECT = "*, developer:developers(*), project:projects(*), agent:agents(*)";
 
 // ── Public site: only ever see moderation-approved ("Live") listings ────────
+// The database returns at most 1000 rows per request, so a single query silently
+// drops everything past the 1000th listing. Fetch in pages until a short page
+// comes back. One bad row never hides the rest.
+const PAGE_SIZE = 1000;
+
+function normalizeRows(rows) {
+  const out = [];
+  (rows || []).forEach((row) => {
+    try {
+      out.push(normalizeListing(row));
+    } catch (err) {
+      console.error("Skipped a listing that couldn't be read:", row?.id, err);
+    }
+  });
+  return out;
+}
+
+async function fetchAllListings(buildQuery) {
+  const rows = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await safeQuery(buildQuery().range(from, from + PAGE_SIZE - 1));
+    if (error) return { data: normalizeRows(rows), error: rows.length ? null : error };
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return { data: normalizeRows(rows), error: null };
+}
+
 export async function fetchPublicListings() {
-  const { data, error } = await safeQuery(
-    supabase.from("listings").select(LISTING_SELECT).eq("status", "Live").order("created_at", { ascending: false })
+  return fetchAllListings(() =>
+    supabase.from("listings").select(LISTING_SELECT).eq("status", "Live")
+      .order("created_at", { ascending: false }).order("id", { ascending: true })
   );
-  if (error) return { data: [], error };
-  return { data: (data || []).map(normalizeListing), error: null };
 }
 
 // ── Admin console: sees every listing regardless of moderation status ───────
 export async function fetchAdminListings() {
-  const { data, error } = await safeQuery(
-    supabase.from("listings").select(LISTING_SELECT).order("created_at", { ascending: false })
+  return fetchAllListings(() =>
+    supabase.from("listings").select(LISTING_SELECT)
+      .order("created_at", { ascending: false }).order("id", { ascending: true })
   );
-  if (error) return { data: [], error };
-  return { data: (data || []).map(normalizeListing), error: null };
 }
 
 export async function fetchListingById(id) {
