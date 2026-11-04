@@ -7,6 +7,7 @@ import { uploadToR2, validateImageFile, validateDocumentFile, computeImageHash, 
 import { fetchActiveListingFieldOptionsGrouped } from "../../lib/listingOptions";
 import LocationPicker, { reverseGeocode } from "./LocationPicker";
 import { parseGoogleMapsLocation } from "../../lib/googleMaps";
+import { isLandType, PLOT_AREA_UNITS, LAND_USE_OPTIONS, PLOT_APPROVAL_OPTIONS, LAND_PHOTO_LABELS, resolvePlotArea, landValidationMessage, formatPlotArea } from "../../lib/landListing";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 // Fallback defaults — used until the dynamic options load (or if "Site
@@ -68,6 +69,8 @@ const AMENITY_CONDITION_OPTIONS = ["New", "Good", "Fair", "Needs Repair"];
 const ROOM_LABEL_OPTIONS = ["Exterior", "Living Room", "Kitchen", "Bedroom", "Bathroom", "Balcony", "Dining Room", "Other"];
 const MANDATORY_ROOM_CATEGORIES = ["Exterior", "Living Room", "Kitchen", "Bedroom", "Bathroom", "Balcony"];
 const MIN_PHOTOS = 8;
+const LAND_MANDATORY_CATEGORIES = ["Plot View"];
+const LAND_MIN_PHOTOS = 3;
 const MAX_RECOMMENDED_PHOTOS = 15;
 // ── New in Section 2H: Seller / Agent Information ──
 const CONTACT_METHOD_OPTIONS = ["Call", "WhatsApp", "Chat", "Email"];
@@ -127,6 +130,15 @@ const EMPTY_FORM = {
   superBuiltUpArea: "",
   carpetArea: "",
   plotArea: "",
+  plotAreaValue: "",
+  plotAreaUnit: "sqft",
+  plotLength: "",
+  plotWidth: "",
+  roadWidth: "",
+  cornerPlot: false,
+  boundaryWall: false,
+  landUse: "",
+  plotApproval: "",
   floorNumber: "",
   totalFloors: "",
   totalUnits: "",
@@ -353,6 +365,15 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       superBuiltUpArea: nullToEmpty(editingListing.superBuiltUpArea),
       carpetArea: nullToEmpty(editingListing.carpetArea),
       plotArea: nullToEmpty(editingListing.plotArea),
+      plotAreaValue: nullToEmpty(editingListing.plotArea),
+      plotAreaUnit: "sqft",
+      plotLength: nullToEmpty(editingListing.plotLength),
+      plotWidth: nullToEmpty(editingListing.plotWidth),
+      roadWidth: nullToEmpty(editingListing.roadWidth),
+      cornerPlot: !!editingListing.cornerPlot,
+      boundaryWall: !!editingListing.boundaryWall,
+      landUse: nullToEmpty(editingListing.landUse),
+      plotApproval: nullToEmpty(editingListing.plotApproval),
       floorNumber: nullToEmpty(editingListing.floorNumber),
       totalFloors: nullToEmpty(editingListing.totalFloors),
       totalUnits: nullToEmpty(editingListing.totalUnits),
@@ -536,6 +557,12 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Bare land (plots, agricultural land) is described by size/road/approvals, not rooms.
+  const isLand = isLandType(form.type);
+  const minPhotos = isLand ? LAND_MIN_PHOTOS : MIN_PHOTOS;
+  const mandatoryCategories = isLand ? LAND_MANDATORY_CATEGORIES : MANDATORY_ROOM_CATEGORIES;
+  const photoLabelOptions = isLand ? LAND_PHOTO_LABELS : ROOM_LABEL_OPTIONS;
+
   function toggleInArray(key, value) {
     setForm((f) => ({
       ...f,
@@ -678,7 +705,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
   function missingMandatoryCategories() {
     const covered = new Set(form.imageDetails.filter((d) => d.roomLabel).map((d) => d.roomLabel));
-    return MANDATORY_ROOM_CATEGORIES.filter((c) => !covered.has(c));
+    return mandatoryCategories.filter((c) => !covered.has(c));
   }
 
   function imageDetailFor(f, url) {
@@ -706,6 +733,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   // (The real price_per_sqft / rental_yield_percent are DB-generated columns —
   // these are just client-side estimates shown ahead of that.)
   function estimatedAreaSqft() {
+    if (isLand) return resolvePlotArea(form);
     return Number(form.builtUpArea) || Number(form.superBuiltUpArea) || Number(form.carpetArea) || Number(form.plotArea) || null;
   }
 
@@ -774,6 +802,12 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
     if (!form.title || !form.location || (!form.priceOnRequest && !form.priceRaw)) {
       setSaveError('Title, location, and price are required — or check "Call for Details" if you\'d rather not list a price.');
+      return;
+    }
+
+    const landProblem = landValidationMessage(form);
+    if (landProblem) {
+      setSaveError(landProblem);
       return;
     }
 
@@ -1072,6 +1106,62 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </Field>
           </div>
 
+            {isLand ? (
+              <div className="rounded-xl p-4 space-y-4" style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: "#1F2937" }}>Plot / Land Details</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>Plots are searched by size, road access and approvals — fill in what you know.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Plot Area" required hint="Pick the unit you know — we store it in sq ft.">
+                    <div className="flex gap-2">
+                      <TextInput type="number" min="0" step="any" value={form.plotAreaValue} onChange={(e) => set("plotAreaValue", e.target.value)} placeholder="e.g. 1800" />
+                      <Select value={form.plotAreaUnit} onChange={(e) => set("plotAreaUnit", e.target.value)}>
+                        {PLOT_AREA_UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                      </Select>
+                    </div>
+                    {formatPlotArea(resolvePlotArea(form)) && (
+                      <p className="text-[11px] mt-1 font-semibold" style={{ color: "#16A34A" }}>= {formatPlotArea(resolvePlotArea(form))}</p>
+                    )}
+                  </Field>
+                  <Field label="Road Width (ft)" hint="Width of the road the plot faces">
+                    <TextInput type="number" min="0" step="any" value={form.roadWidth} onChange={(e) => set("roadWidth", e.target.value)} placeholder="e.g. 30" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Length (ft)" hint="Optional">
+                    <TextInput type="number" min="0" step="any" value={form.plotLength} onChange={(e) => set("plotLength", e.target.value)} placeholder="e.g. 60" />
+                  </Field>
+                  <Field label="Width (ft)" hint="Optional">
+                    <TextInput type="number" min="0" step="any" value={form.plotWidth} onChange={(e) => set("plotWidth", e.target.value)} placeholder="e.g. 30" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Land Use">
+                    <Select value={form.landUse} onChange={(e) => set("landUse", e.target.value)}>
+                      <option value="">— Select —</option>
+                      {LAND_USE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Approval / Layout">
+                    <Select value={form.plotApproval} onChange={(e) => set("plotApproval", e.target.value)}>
+                      <option value="">— Select —</option>
+                      {PLOT_APPROVAL_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </Select>
+                  </Field>
+                </div>
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+                    <input type="checkbox" checked={form.cornerPlot} onChange={(e) => set("cornerPlot", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
+                    Corner plot
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+                    <input type="checkbox" checked={form.boundaryWall} onChange={(e) => set("boundaryWall", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
+                    Boundary wall built
+                  </label>
+                </div>
+              </div>
+            ) : (
           <Field label="BHK" hint="Select all that apply — e.g. a project offering both 2 BHK and 3 BHK units.">
             <div className="flex flex-wrap gap-2">
               {BHK_OPTIONS.map((b) => (
@@ -1079,6 +1169,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               ))}
             </div>
           </Field>
+            )}
 
           <Field label="Pin Location on Map" hint="Powers the interactive map shown on the property's public page.">
             <LocationPicker
@@ -1184,18 +1275,26 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             <Field label="Project Name" hint="Same field as in Project & Developer Information below.">
               <TextInput value={form.projectName} onChange={(e) => set("projectName", e.target.value)} placeholder="e.g. Skyline Residency" />
             </Field>
+          {!isLand && (
+          <>
             <Field label="Tower / Block">
               <TextInput value={form.towerBlock} onChange={(e) => set("towerBlock", e.target.value)} placeholder="e.g. Tower B" />
             </Field>
             <Field label="Unit Number">
               <TextInput value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder="e.g. 1204" />
             </Field>
+          </>
+          )}
           </div>
 
+          {!isLand && (
+          <>
           <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
             <input type="checkbox" checked={form.unitNumberPublic} onChange={(e) => set("unitNumberPublic", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
             Show unit number on the public listing
           </label>
+          </>
+          )}
 
           <Field label="Listing Type" hint="Independent of Transaction Type / Possession above — the richer classification used for badges and filters.">
             <Select value={form.listingType} onChange={(e) => set("listingType", e.target.value)}>
@@ -1203,6 +1302,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </Select>
           </Field>
 
+          {!isLand && (
+          <>
           <div className="grid grid-cols-3 gap-4">
             <Field label="Bathrooms">
               <TextInput type="number" min="0" value={form.bathrooms} onChange={(e) => set("bathrooms", e.target.value)} placeholder="e.g. 2" />
@@ -1217,7 +1318,11 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </label>
             </div>
           </div>
+          </>
+          )}
 
+          {!isLand && (
+          <>
           <Field label="Area Breakdown (sqft)" hint="Fill in whichever apply — e.g. plots typically only need Plot Area.">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <TextInput type="number" min="0" value={form.builtUpArea} onChange={(e) => set("builtUpArea", e.target.value)} placeholder="Built-up" />
@@ -1238,6 +1343,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               <TextInput type="number" min="0" value={form.totalUnits} onChange={(e) => set("totalUnits", e.target.value)} placeholder="e.g. 240" />
             </Field>
           </div>
+          </>
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Facing">
@@ -1259,6 +1366,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </Field>
           </div>
 
+          {!isLand && (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Furnishing">
               <Select value={form.furnishing} onChange={(e) => set("furnishing", e.target.value)}>
@@ -1276,6 +1385,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               <TextInput value={form.age} onChange={(e) => set("age", e.target.value)} placeholder="e.g. 2 years / New" />
             </Field>
           </div>
+          </>
+          )}
         </div>
 
         {/* ── Price & Financial Transparency (Section 2B) ── */}
@@ -1928,7 +2039,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           {(() => {
             const missing = missingMandatoryCategories();
             const count = form.images.length;
-            if (count >= MIN_PHOTOS && missing.length === 0) {
+            if (count >= minPhotos && missing.length === 0) {
               return (
                 <div className="px-3.5 py-2.5 rounded-xl text-xs font-semibold" style={{ background: "#F0FDF4", color: "#16A34A" }}>
                   ✓ {count} photo{count === 1 ? "" : "s"}, all mandatory categories covered.
@@ -1938,7 +2049,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             return (
               <div className="px-3.5 py-2.5 rounded-xl text-xs" style={{ background: "#FFFBEB", color: "#92400E" }}>
                 <p className="font-semibold">
-                  {count} of {MIN_PHOTOS}–{MAX_RECOMMENDED_PHOTOS} recommended photos{count < MIN_PHOTOS ? ` (${MIN_PHOTOS - count} more recommended)` : ""}.
+                  {count} of {minPhotos}–{MAX_RECOMMENDED_PHOTOS} recommended photos{count < minPhotos ? ` (${minPhotos - count} more recommended)` : ""}.
                 </p>
                 {missing.length > 0 && <p className="mt-0.5">Missing room labels for: {missing.join(", ")}. Set a Room Label on at least one photo per category below.</p>}
               </div>
@@ -1977,8 +2088,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                   </div>
                   <div className="p-1.5 space-y-1">
                     <Select value={detail.roomLabel} onChange={(e) => setImageDetail(url, "roomLabel", e.target.value)}>
-                      <option value="">Room label…</option>
-                      {ROOM_LABEL_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                      <option value="">{isLand ? "Photo label…" : "Room label…"}</option>
+                      {photoLabelOptions.map((r) => <option key={r} value={r}>{r}</option>)}
                     </Select>
                     <TextInput value={detail.caption} onChange={(e) => setImageDetail(url, "caption", e.target.value)} placeholder="Caption (optional)" />
                   </div>

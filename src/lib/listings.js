@@ -1,5 +1,6 @@
 import { supabase, safeQuery } from "./supabaseClient";
 import { deleteFromR2 } from "./r2Upload";
+import { isLandType, stripBuildingFields, resolvePlotArea, plotDetailsSummary } from "./landListing";
 
 // Shown when a listing has no photos yet (e.g. just created, images still uploading)
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=380&fit=crop";
@@ -149,6 +150,15 @@ export function normalizeListing(row) {
     superBuiltUpArea: row.super_built_up_area_sqft != null ? row.super_built_up_area_sqft : null,
     carpetArea: row.carpet_area_sqft != null ? row.carpet_area_sqft : null,
     plotArea: row.plot_area_sqft != null ? row.plot_area_sqft : null,
+
+    // ── Plot / land details (only filled for plots & land) ──
+    plotLength: row.plot_length_ft != null ? Number(row.plot_length_ft) : null,
+    plotWidth: row.plot_width_ft != null ? Number(row.plot_width_ft) : null,
+    roadWidth: row.road_width_ft != null ? Number(row.road_width_ft) : null,
+    cornerPlot: !!row.corner_plot,
+    boundaryWall: !!row.boundary_wall,
+    landUse: row.land_use || null,
+    plotApproval: row.plot_approval || null,
 
     // ── Floor / tower structure ──
     floorNumber: row.floor_number != null ? row.floor_number : null,
@@ -381,12 +391,56 @@ function deriveFloorText(floorNumber, totalFloors) {
   return totalFloors ? `${ordinal(n)} of ${totalFloors}` : `${ordinal(n)} Floor`;
 }
 
+// Plot-specific columns (migration_029). Sent for land listings, and for other
+// types only when the owner actually filled one in — so ordinary flat/villa
+// listings never depend on the migration.
+export const PLOT_COLUMNS = ["plot_length_ft", "plot_width_ft", "road_width_ft", "corner_plot", "boundary_wall", "land_use", "plot_approval"];
+
+function positiveOrNull(v) {
+  const n = Number(v);
+  return v !== "" && v != null && Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function plotColumns(f) {
+  const cols = {
+    plot_length_ft: positiveOrNull(f.plotLength),
+    plot_width_ft: positiveOrNull(f.plotWidth),
+    road_width_ft: positiveOrNull(f.roadWidth),
+    corner_plot: !!f.cornerPlot,
+    boundary_wall: !!f.boundaryWall,
+    land_use: f.landUse || null,
+    plot_approval: f.plotApproval || null,
+  };
+  const anySet = Object.values(cols).some((v) => v !== null && v !== false);
+  return isLandType(f.type) || anySet ? cols : {};
+}
+
+// If the database hasn't had migration_029 applied yet, PostgREST rejects the
+// plot columns. Rather than failing the whole listing, retry without them and
+// keep the plot facts in the description so nothing the owner typed is lost.
+function isMissingPlotColumnError(error) {
+  const msg = `${error?.message || ""} ${error?.details || ""}`;
+  return PLOT_COLUMNS.some((c) => msg.includes(c));
+}
+
+function withoutPlotColumns(payload, property) {
+  const next = { ...payload };
+  PLOT_COLUMNS.forEach((c) => delete next[c]);
+  const summary = plotDetailsSummary(property);
+  if (summary && !String(next.description || "").includes(summary)) {
+    next.description = [next.description, summary].filter(Boolean).join("\n\n");
+  }
+  return next;
+}
+
 // ── UI shape (admin form) -> DB row ──────────────────────────────────────────
-export function denormalizeListing(f) {
+export function denormalizeListing(input) {
+  // Bare land has no rooms/floors — drop anything left over from a type switch.
+  const f = isLandType(input.type) ? stripBuildingFields(input) : input;
   const builtUpArea = f.builtUpArea ? parseInt(f.builtUpArea, 10) || null : null;
   const superBuiltUpArea = f.superBuiltUpArea ? parseInt(f.superBuiltUpArea, 10) || null : null;
   const carpetArea = f.carpetArea ? parseInt(f.carpetArea, 10) || null : null;
-  const plotArea = f.plotArea ? parseInt(f.plotArea, 10) || null : null;
+  const plotArea = resolvePlotArea(f);
   const floorNumber = f.floorNumber !== "" && f.floorNumber != null ? parseInt(f.floorNumber, 10) : null;
   const totalFloors = f.totalFloors ? parseInt(f.totalFloors, 10) || null : null;
 
@@ -407,7 +461,7 @@ export function denormalizeListing(f) {
     // actually filled in (built-up > super built-up > carpet > plot), falling
     // back to a legacy plain "area" value only if none of those are set — so
     // existing cards, sorting, and search filters keep working unchanged.
-    area_sqft: builtUpArea || superBuiltUpArea || carpetArea || plotArea || (f.area ? parseInt(f.area, 10) || null : null),
+    area_sqft: (isLandType(f.type) ? plotArea : null) || builtUpArea || superBuiltUpArea || carpetArea || plotArea || (f.area ? parseInt(f.area, 10) || null : null),
     // legacy `floor` text stays in sync from the structured fields below,
     // unless something already set it directly (e.g. old data).
     floor: deriveFloorText(floorNumber, totalFloors) || f.floor || null,
@@ -443,6 +497,7 @@ export function denormalizeListing(f) {
     super_built_up_area_sqft: superBuiltUpArea,
     carpet_area_sqft: carpetArea,
     plot_area_sqft: plotArea,
+    ...plotColumns(f),
 
     // ── Floor / tower structure ──
     floor_number: floorNumber,
@@ -674,14 +729,20 @@ export async function createListing(property) {
   const payload = denormalizeListing(property);
   if (sessionData?.session) payload.posted_by_user_id = sessionData.session.user.id;
 
-  const { data, error } = await safeQuery(supabase.from("listings").insert(payload).select(LISTING_SELECT).single());
+  let { data, error } = await safeQuery(supabase.from("listings").insert(payload).select(LISTING_SELECT).single());
+  if (error && isMissingPlotColumnError(error)) {
+    ({ data, error } = await safeQuery(supabase.from("listings").insert(withoutPlotColumns(payload, property)).select(LISTING_SELECT).single()));
+  }
   if (error) return { data: null, error };
   return { data: normalizeListing(data), error: null };
 }
 
 export async function updateListing(id, property) {
   const payload = denormalizeListing(property);
-  const { data, error } = await safeQuery(supabase.from("listings").update(payload).eq("id", id).select(LISTING_SELECT).single());
+  let { data, error } = await safeQuery(supabase.from("listings").update(payload).eq("id", id).select(LISTING_SELECT).single());
+  if (error && isMissingPlotColumnError(error)) {
+    ({ data, error } = await safeQuery(supabase.from("listings").update(withoutPlotColumns(payload, property)).eq("id", id).select(LISTING_SELECT).single()));
+  }
   if (error) return { data: null, error };
   return { data: normalizeListing(data), error: null };
 }
