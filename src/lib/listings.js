@@ -1,6 +1,8 @@
 import { supabase, safeQuery } from "./supabaseClient";
 import { deleteFromR2 } from "./r2Upload";
 import { isLandType, stripBuildingFields, resolvePlotArea, plotDetailsSummary } from "./landListing";
+import { applyProfile } from "./listingProfile";
+import { transactionFor } from "./propertyTypes";
 
 // Shown when a listing has no photos yet (e.g. just created, images still uploading)
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=380&fit=crop";
@@ -126,7 +128,7 @@ export function normalizeListing(row) {
     imgCount: (row.images || []).length || 1,
     verified: !!row.verified,
     featured: !!row.featured,
-    transactionType: row.transaction_type || "Buy",
+    transactionType: transactionFor(row.listing_type, row.transaction_type),
     listingType: row.listing_type || null,        // Sale | Rent | Lease | Resale | New Launch | Under Construction
     tags: row.tags || [],
     amenities: row.amenities || [],
@@ -436,7 +438,7 @@ function withoutPlotColumns(payload, property) {
 // ── UI shape (admin form) -> DB row ──────────────────────────────────────────
 export function denormalizeListing(input) {
   // Bare land has no rooms/floors — drop anything left over from a type switch.
-  const f = isLandType(input.type) ? stripBuildingFields(input) : input;
+  const f = applyProfile(isLandType(input.type) ? stripBuildingFields(input) : input);
   const builtUpArea = f.builtUpArea ? parseInt(f.builtUpArea, 10) || null : null;
   const superBuiltUpArea = f.superBuiltUpArea ? parseInt(f.superBuiltUpArea, 10) || null : null;
   const carpetArea = f.carpetArea ? parseInt(f.carpetArea, 10) || null : null;
@@ -453,7 +455,7 @@ export function denormalizeListing(input) {
     price_on_request: !!f.priceOnRequest,
     status: f.moderationStatus || "Pending",
     posted_by: f.postedBy,
-    transaction_type: f.transactionType,
+    transaction_type: transactionFor(f.listingType, f.transactionType),
     listing_type: f.listingType || null,
     possession: f.status || null,
     bhk: Array.isArray(f.bhk) ? f.bhk : (f.bhk ? [f.bhk] : []),

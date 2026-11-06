@@ -176,6 +176,64 @@ function citiesIn(text) {
   return found;
 }
 
+// Approximate city centres (lat, lng). A listing pinned more than ~60 km from
+// the searched city is not in that city, whatever its text says (typos and
+// copy-pasted locations happen).
+const CITY_CENTERS = {
+  "bhubaneswar": [20.2961, 85.8245], "cuttack": [20.4625, 85.8830], "puri": [19.8135, 85.8312],
+  "chandigarh": [30.7333, 76.7794], "new chandigarh": [30.8000, 76.7200], "mohali": [30.7046, 76.7179],
+  "zirakpur": [30.6425, 76.8173], "panchkula": [30.6942, 76.8606], "sonipat": [28.9931, 77.0151],
+  "panipat": [29.3909, 76.9635], "rishikesh": [30.0869, 78.2676], "haridwar": [29.9457, 78.1642],
+  "dehradun": [30.3165, 78.0322], "gurgaon": [28.4595, 77.0266], "noida": [28.5355, 77.3910],
+  "ghaziabad": [28.6692, 77.4538], "faridabad": [28.4089, 77.3178], "sohna": [28.2476, 77.0666],
+  "ranchi": [23.3441, 85.3096], "raipur": [21.2514, 81.6296], "mumbai": [19.0760, 72.8777],
+  "shimla": [31.1048, 77.1734], "dharamshala": [32.2190, 76.3234], "nashik": [19.9975, 73.7898],
+  "prayagraj": [25.4358, 81.8463], "gujarat": [23.0225, 72.5714], "delhi": [28.6139, 77.2090],
+  "new delhi": [28.6139, 77.2090], "bangalore": [12.9716, 77.5946], "bengaluru": [12.9716, 77.5946],
+  "hyderabad": [17.3850, 78.4867], "pune": [18.5204, 73.8567], "kolkata": [22.5726, 88.3639], "chennai": [13.0827, 80.2707],
+};
+const MAX_KM_FROM_CITY = 60;
+
+function distanceKm(aLat, aLng, bLat, bLng) {
+  const R = 6371, rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(bLat - aLat), dLng = rad(bLng - aLng);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+// False when the listing has a map pin that is clearly outside every searched city.
+function pinIsNearCities(property, queryCities) {
+  const lat = Number(property.latitude), lng = Number(property.longitude);
+  if (!lat || !lng) return true; // no pin -> can't tell
+  const centres = [...queryCities].map((c) => CITY_CENTERS[c]).filter(Boolean);
+  if (centres.length === 0) return true;
+  return centres.some(([cLat, cLng]) => distanceKm(lat, lng, cLat, cLng) <= MAX_KM_FROM_CITY);
+}
+
+// The one city a listing belongs to, if it can be told (place text first,
+// then its map pin). Used to keep "similar properties" in the same city.
+export function cityOf(property) {
+  const place = listingPlaceText(property);
+  const fromText = [...citiesIn(place)];
+  // prefer the most specific (longest) name, e.g. "new chandigarh" over "chandigarh"
+  if (fromText.length) return fromText.sort((a, b) => b.length - a.length)[0];
+  const lat = Number(property.latitude), lng = Number(property.longitude);
+  if (lat && lng) {
+    let best = null, bestKm = MAX_KM_FROM_CITY;
+    Object.entries(CITY_CENTERS).forEach(([c, [cLat, cLng]]) => {
+      const d = distanceKm(lat, lng, cLat, cLng);
+      if (d < bestKm) { best = c; bestKm = d; }
+    });
+    return best;
+  }
+  return null;
+}
+
+export function inSameCity(a, b) {
+  const ca = cityOf(a), cb = cityOf(b);
+  return !ca || !cb || ca === cb;
+}
+
 // "Patia, Bhubaneswar", "patia bhubaneswar", "Bhubaneswar 751024" and
 // "Salt Lake City" all work: every meaningful word in the search has to
 // appear in the listing, in any order. When the search names a city, the
@@ -186,9 +244,11 @@ export function matchesLocation(property, query) {
   const has = (text) => words.every((w) => wordVariants(w).some((v) => text.includes(v)));
 
   const place = listingPlaceText(property);
+  const queryCities = citiesIn(words.join(" "));
+  // A pin on the map far away from the searched city beats whatever the text says.
+  if (queryCities.size > 0 && !pinIsNearCities(property, queryCities)) return false;
   if (has(place)) return true;
 
-  const queryCities = citiesIn(words.join(" "));
   if (queryCities.size > 0) {
     // Listing's place fields name some other city -> it's not in the searched city.
     if (citiesIn(place).size > 0) return false;

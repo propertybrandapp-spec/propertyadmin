@@ -27,3 +27,29 @@ export function matchesPropertyType(selectedTypes, p) {
     return re.test([p.title, (p.tags || []).join(" "), p.description].filter(Boolean).join(" "));
   });
 }
+
+// ── Buy vs Rent ──────────────────────────────────────────────────────────────
+// A listing has both a "Transaction" (Buy/Rent) and a "Listing Type"
+// (Sale / Rent / Lease / Resale / …). If someone picked Listing Type "Rent" or
+// "Lease" but left Transaction on its default "Buy", the property would have
+// been hidden from every rental search. Listing Type wins.
+const RENTAL_LISTING_TYPES = ["rent", "lease"];
+export function transactionFor(listingType, transactionType) {
+  if (RENTAL_LISTING_TYPES.includes(String(listingType ?? "").trim().toLowerCase())) return "Rent";
+  return transactionType === "Rent" ? "Rent" : "Buy";
+}
+
+// Tag filters (e.g. "Co-living", "Student Accommodation", "Luxury") match a
+// listing's tags, but also its property type and wording, so a category page
+// isn't empty just because the poster didn't tick the exact tag.
+const squash = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+export function matchesTags(selectedTags, p) {
+  if (!selectedTags || selectedTags.length === 0) return true;
+  const own = (p.tags || []).map(squash);
+  const type = squash(p.type);
+  const text = squash([p.title, p.description].filter(Boolean).join(" "));
+  return selectedTags.some((t) => {
+    const w = squash(t);
+    return own.includes(w) || type === w || (w.length >= 6 && text.includes(w));
+  });
+}

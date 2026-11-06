@@ -7,7 +7,8 @@ import { uploadToR2, validateImageFile, validateDocumentFile, computeImageHash, 
 import { fetchActiveListingFieldOptionsGrouped } from "../../lib/listingOptions";
 import LocationPicker, { reverseGeocode } from "./LocationPicker";
 import { parseGoogleMapsLocation } from "../../lib/googleMaps";
-import { withExtraTypes } from "../../lib/propertyTypes";
+import { withExtraTypes, transactionFor } from "../../lib/propertyTypes";
+import { getFormProfile, AREA_LABELS } from "../../lib/listingProfile";
 import { isLandType, PLOT_AREA_UNITS, LAND_USE_OPTIONS, PLOT_APPROVAL_OPTIONS, LAND_PHOTO_LABELS, resolvePlotArea, landValidationMessage, formatPlotArea } from "../../lib/landListing";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -559,7 +560,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   }
 
   // Bare land (plots, agricultural land) is described by size/road/approvals, not rooms.
-  const isLand = isLandType(form.type);
+  const profile = getFormProfile(form.type);
+  const isLand = profile.kind === "land";
   const minPhotos = isLand ? LAND_MIN_PHOTOS : MIN_PHOTOS;
   const mandatoryCategories = isLand ? LAND_MANDATORY_CATEGORIES : MANDATORY_ROOM_CATEGORIES;
   const photoLabelOptions = isLand ? LAND_PHOTO_LABELS : ROOM_LABEL_OPTIONS;
@@ -1081,7 +1083,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Basic Information</h2>
 
           <Field label="Title" required>
-            <TextInput value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. 3 BHK Apartment" required />
+            <TextInput value={form.title} onChange={(e) => set("title", e.target.value)} placeholder={profile.titleHint} required />
           </Field>
 
           <Field label="Location" required>
@@ -1162,7 +1164,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                   </label>
                 </div>
               </div>
-            ) : (
+            ) : profile.bhk ? (
           <Field label="BHK" hint="Select all that apply — e.g. a project offering both 2 BHK and 3 BHK units.">
             <div className="flex flex-wrap gap-2">
               {BHK_OPTIONS.map((b) => (
@@ -1170,7 +1172,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               ))}
             </div>
           </Field>
-            )}
+            ) : null}
 
           <Field label="Pin Location on Map" hint="Powers the interactive map shown on the property's public page.">
             <LocationPicker
@@ -1276,76 +1278,87 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             <Field label="Project Name" hint="Same field as in Project & Developer Information below.">
               <TextInput value={form.projectName} onChange={(e) => set("projectName", e.target.value)} placeholder="e.g. Skyline Residency" />
             </Field>
-          {!isLand && (
-          <>
+            {profile.tower && (
             <Field label="Tower / Block">
               <TextInput value={form.towerBlock} onChange={(e) => set("towerBlock", e.target.value)} placeholder="e.g. Tower B" />
             </Field>
-            <Field label="Unit Number">
-              <TextInput value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder="e.g. 1204" />
+            )}
+            {profile.unitLabel && (
+            <Field label={profile.unitLabel}>
+              <TextInput value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)} placeholder={profile.unitPlaceholder} />
             </Field>
-          </>
-          )}
+            )}
           </div>
 
-          {!isLand && (
-          <>
-          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
-            <input type="checkbox" checked={form.unitNumberPublic} onChange={(e) => set("unitNumberPublic", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
-            Show unit number on the public listing
-          </label>
-          </>
-          )}
+            {profile.unitLabel && (
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+              <input type="checkbox" checked={form.unitNumberPublic} onChange={(e) => set("unitNumberPublic", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
+              Show {profile.unitLabel.toLowerCase()} on the public listing
+            </label>
+            )}
 
           <Field label="Listing Type" hint="Independent of Transaction Type / Possession above — the richer classification used for badges and filters.">
-            <Select value={form.listingType} onChange={(e) => set("listingType", e.target.value)}>
+            <Select value={form.listingType} onChange={(e) => { set("listingType", e.target.value); set("transactionType", transactionFor(e.target.value, form.transactionType)); }}>
               {LISTING_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
             </Select>
           </Field>
 
-          {!isLand && (
-          <>
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Bathrooms">
-              <TextInput type="number" min="0" value={form.bathrooms} onChange={(e) => set("bathrooms", e.target.value)} placeholder="e.g. 2" />
-            </Field>
-            <Field label="Balconies">
-              <TextInput type="number" min="0" value={form.balconies} onChange={(e) => set("balconies", e.target.value)} placeholder="e.g. 1" />
-            </Field>
-            <div className="flex items-end pb-2.5">
-              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
-                <input type="checkbox" checked={form.servantRoom} onChange={(e) => set("servantRoom", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
-                Servant Room
-              </label>
+            {(profile.bathrooms || profile.balconies || profile.servantRoom) && (
+            <div className="grid grid-cols-3 gap-4">
+              {profile.bathrooms && (
+                <Field label={profile.bathLabel}>
+                  <TextInput type="number" min="0" value={form.bathrooms} onChange={(e) => set("bathrooms", e.target.value)} placeholder="e.g. 2" />
+                </Field>
+              )}
+              {profile.balconies && (
+                <Field label="Balconies">
+                  <TextInput type="number" min="0" value={form.balconies} onChange={(e) => set("balconies", e.target.value)} placeholder="e.g. 1" />
+                </Field>
+              )}
+              {profile.servantRoom && (
+                <div className="flex items-end pb-2.5">
+                  <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+                    <input type="checkbox" checked={form.servantRoom} onChange={(e) => set("servantRoom", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
+                    Servant Room
+                  </label>
+                </div>
+              )}
             </div>
-          </div>
-          </>
-          )}
+            )}
 
-          {!isLand && (
-          <>
-          <Field label="Area Breakdown (sqft)" hint="Fill in whichever apply — e.g. plots typically only need Plot Area.">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <TextInput type="number" min="0" value={form.builtUpArea} onChange={(e) => set("builtUpArea", e.target.value)} placeholder="Built-up" />
-              <TextInput type="number" min="0" value={form.superBuiltUpArea} onChange={(e) => set("superBuiltUpArea", e.target.value)} placeholder="Super Built-up" />
-              <TextInput type="number" min="0" value={form.carpetArea} onChange={(e) => set("carpetArea", e.target.value)} placeholder="Carpet" />
-              <TextInput type="number" min="0" value={form.plotArea} onChange={(e) => set("plotArea", e.target.value)} placeholder="Plot" />
+            {profile.areas.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold mb-1" style={{ color: "#1F2937" }}>Area (sqft)</p>
+              {profile.areaHint && <p className="text-xs mb-2" style={{ color: "#6B7280" }}>{profile.areaHint}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {profile.areas.map((k) => (
+                  <Field key={k} label={AREA_LABELS[k]}>
+                    <TextInput type="number" min="0" value={form[k]} onChange={(e) => set(k, e.target.value)} placeholder="sq ft" />
+                  </Field>
+                ))}
+              </div>
             </div>
-          </Field>
+            )}
 
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Floor Number" hint="0 = ground floor">
-              <TextInput type="number" min="0" value={form.floorNumber} onChange={(e) => set("floorNumber", e.target.value)} placeholder="e.g. 8" />
-            </Field>
-            <Field label="Total Floors">
-              <TextInput type="number" min="0" value={form.totalFloors} onChange={(e) => set("totalFloors", e.target.value)} placeholder="e.g. 12" />
-            </Field>
-            <Field label="Total Units in Project">
-              <TextInput type="number" min="0" value={form.totalUnits} onChange={(e) => set("totalUnits", e.target.value)} placeholder="e.g. 240" />
-            </Field>
-          </div>
-          </>
-          )}
+            {(profile.floorNumber || profile.totalFloors || profile.totalUnits) && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {profile.floorNumber && (
+                <Field label="Floor Number" hint="0 = ground floor">
+                  <TextInput type="number" min="0" value={form.floorNumber} onChange={(e) => set("floorNumber", e.target.value)} placeholder="e.g. 8" />
+                </Field>
+              )}
+              {profile.totalFloors && (
+                <Field label={profile.totalFloorsLabel}>
+                  <TextInput type="number" min="0" value={form.totalFloors} onChange={(e) => set("totalFloors", e.target.value)} placeholder="e.g. 12" />
+                </Field>
+              )}
+              {profile.totalUnits && (
+                <Field label="Total Units in Project">
+                  <TextInput type="number" min="0" value={form.totalUnits} onChange={(e) => set("totalUnits", e.target.value)} placeholder="e.g. 240" />
+                </Field>
+              )}
+            </div>
+            )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Facing">
@@ -1367,27 +1380,31 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </Field>
           </div>
 
-          {!isLand && (
-          <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <Field label="Furnishing">
-              <Select value={form.furnishing} onChange={(e) => set("furnishing", e.target.value)}>
-                <option value="">— N/A —</option>
-                {FURNISHING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-              </Select>
-            </Field>
-            <Field label="Condition">
-              <Select value={form.condition} onChange={(e) => set("condition", e.target.value)}>
-                <option value="">— N/A —</option>
-                {CONDITION_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
-            </Field>
-            <Field label="Age of Property">
-              <TextInput value={form.age} onChange={(e) => set("age", e.target.value)} placeholder="e.g. 2 years / New" />
-            </Field>
-          </div>
-          </>
-          )}
+            {(profile.furnishing || profile.condition || profile.age) && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {profile.furnishing && (
+                <Field label="Furnishing">
+                  <Select value={form.furnishing} onChange={(e) => set("furnishing", e.target.value)}>
+                    <option value="">— N/A —</option>
+                    {FURNISHING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+                  </Select>
+                </Field>
+              )}
+              {profile.condition && (
+                <Field label="Condition">
+                  <Select value={form.condition} onChange={(e) => set("condition", e.target.value)}>
+                    <option value="">— N/A —</option>
+                    {CONDITION_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </Select>
+                </Field>
+              )}
+              {profile.age && (
+                <Field label="Age of Property">
+                  <TextInput value={form.age} onChange={(e) => set("age", e.target.value)} placeholder="e.g. 2 years / New" />
+                </Field>
+              )}
+            </div>
+            )}
         </div>
 
         {/* ── Price & Financial Transparency (Section 2B) ── */}
