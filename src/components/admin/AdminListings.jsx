@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "./AdminLayout";
-import { fetchAdminListings, updateListingStatus, deleteListing } from "../../lib/listings";
+import { fetchAdminListings, fetchListingContacts, updateListingStatus, deleteListing } from "../../lib/listings";
 import { budgetSteps, formatBudget, matchesBudget, matchesLocation } from "../../lib/searchFilters";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -139,7 +139,9 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
   async function load() {
     setLoading(true);
     const { data, error } = await fetchAdminListings();
-    setListings(data);
+    // Posters' private phone numbers (separate table; admin-only) so they can be called when approving.
+    const contacts = await fetchListingContacts((data || []).map((l) => l.dbId));
+    setListings((data || []).map((l) => ({ ...l, contactPhone: contacts[l.dbId] || null })));
     setErrorMsg(error ? (error.message || "Couldn't load listings — check your Supabase connection (see SETUP.md).") : "");
     setLoading(false);
   }
@@ -352,6 +354,7 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
                     <th className="px-3 py-3.5 text-left font-bold hidden md:table-cell" style={{ color: "#1F2937" }}>Type</th>
                     <th className="px-3 py-3.5 text-left font-bold" style={{ color: "#1F2937" }}>Price</th>
                     <th className="px-3 py-3.5 text-left font-bold hidden lg:table-cell" style={{ color: "#1F2937" }}>Posted By</th>
+                    <th className="px-3 py-3.5 text-left font-bold" style={{ color: "#1F2937" }}>Contact</th>
                     <th className="px-3 py-3.5 text-left font-bold hidden lg:table-cell" style={{ color: "#1F2937" }}>Views</th>
                     <th className="px-3 py-3.5 text-left font-bold" style={{ color: "#1F2937" }}>Status</th>
                     <th className="px-3 py-3.5 text-left font-bold hidden md:table-cell" style={{ color: "#1F2937" }}>Created</th>
@@ -390,6 +393,11 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
                       <td className="px-3 py-3.5 hidden md:table-cell" style={{ color: "#6B7280" }}>{listing.type}</td>
                       <td className="px-3 py-3.5 font-bold" style={{ color: "#1F2937" }}>{listing.price}</td>
                       <td className="px-3 py-3.5 hidden lg:table-cell" style={{ color: "#6B7280" }}>{listing.postedBy}</td>
+                      <td className="px-3 py-3.5 whitespace-nowrap">
+                        {listing.contactPhone
+                          ? <a href={`tel:${listing.contactPhone}`} className="font-semibold text-xs" style={{ color: "#1565C0" }}>{listing.contactPhone}</a>
+                          : <span className="text-xs" style={{ color: "#9CA3AF" }}>—</span>}
+                      </td>
                       <td className="px-3 py-3.5 hidden lg:table-cell" style={{ color: "#6B7280" }}>{(listing.views || 0).toLocaleString()}</td>
                       <td className="px-3 py-3.5"><StatusBadge status={listing.moderationStatus} /></td>
                       <td className="px-3 py-3.5 hidden md:table-cell" style={{ color: "#6B7280" }}>

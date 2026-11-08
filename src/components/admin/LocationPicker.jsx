@@ -15,7 +15,7 @@ function pinIcon() {
   });
 }
 
-// Default center: Bhubaneswar, Odisha (propertyBrands HQ) — shown only until
+// Default center: Bhubaneswar, Odisha (PropertyBrands HQ) — shown only until
 // a pin is set or a search moves the map.
 const DEFAULT_CENTER = [20.2961, 85.8245];
 

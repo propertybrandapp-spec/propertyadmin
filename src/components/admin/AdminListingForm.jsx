@@ -1,3 +1,4 @@
+import ProjectExtrasFields from "./ProjectExtrasFields";
 import { useState, useEffect, useRef } from "react";
 import AdminLayout from "./AdminLayout";
 import { createListing, updateListing, deleteListing, LANDMARK_CATEGORIES } from "../../lib/listings";
@@ -111,6 +112,10 @@ const EMPTY_FORM = {
   latitude: null,
   longitude: null,
   videoUrls: [],
+  unitConfigs: [],
+  handoverDate: "",
+  handoverTimeline: "",
+  priceTrend: [],
   tags: [],
   amenities: [],
   images: [],
@@ -1078,6 +1083,14 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           </div>
         )}
 
+        {isEditing && editingListing?.contactPhone && (
+          <div className="px-4 py-3 rounded-xl text-sm flex flex-wrap items-center gap-2" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
+            <span className="font-bold">Poster's private contact number:</span>
+            <a href={`tel:${editingListing.contactPhone}`} className="font-bold underline">{editingListing.contactPhone}</a>
+            <span className="text-xs" style={{ color: "#475569" }}>(call to verify before approving — never shown to visitors)</span>
+          </div>
+        )}
+
         {/* ── Basic Info ── */}
         <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
           <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>Basic Information</h2>
@@ -1406,6 +1419,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </div>
             )}
         </div>
+
+        <ProjectExtrasFields form={form} set={set} isLand={isLand} hasBhk={!!profile.bhk} />
 
         {/* ── Price & Financial Transparency (Section 2B) ── */}
         <div className="rounded-2xl p-6 space-y-5" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>

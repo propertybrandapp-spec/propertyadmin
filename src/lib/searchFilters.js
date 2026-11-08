@@ -115,6 +115,12 @@ export function isBudgetActive(budget) {
 
 export function matchesBudget(property, budget) {
   if (!isBudgetActive(budget)) return true;
+  // A project with several sizes matches when ANY size fits the budget.
+  const unitPrices = (property.unitConfigs || []).map((u) => u.price).filter(Boolean);
+  if (unitPrices.length) {
+    const [lo, hi] = budget;
+    return unitPrices.some((p) => !(Number(lo) > 0 && p < Number(lo)) && !(hi !== null && hi !== undefined && Number.isFinite(Number(hi)) && p > Number(hi)));
+  }
   const price = Number(property.priceRaw) || 0;
   if (!price || property.priceOnRequest) return false;
   const [min, max] = budget;
@@ -191,6 +197,13 @@ const CITY_CENTERS = {
   "prayagraj": [25.4358, 81.8463], "gujarat": [23.0225, 72.5714], "delhi": [28.6139, 77.2090],
   "new delhi": [28.6139, 77.2090], "bangalore": [12.9716, 77.5946], "bengaluru": [12.9716, 77.5946],
   "hyderabad": [17.3850, 78.4867], "pune": [18.5204, 73.8567], "kolkata": [22.5726, 88.3639], "chennai": [13.0827, 80.2707],
+  "ahmedabad": [23.0225, 72.5714], "amritsar": [31.6340, 74.8723], "berhampur": [19.3150, 84.7941], "bhilai": [21.2094, 81.4285],
+  "bhopal": [23.2599, 77.4126], "coimbatore": [11.0168, 76.9558], "goa": [15.4909, 73.8278], "greater noida": [28.4744, 77.5040],
+  "guwahati": [26.1445, 91.7362], "indore": [22.7196, 75.8577], "jaipur": [26.9124, 75.7873], "jalandhar": [31.3260, 75.5762],
+  "jamshedpur": [22.8046, 86.2029], "kharar": [30.7460, 76.6465], "kochi": [9.9312, 76.2673], "lucknow": [26.8467, 80.9462],
+  "ludhiana": [30.9010, 75.8573], "meerut": [28.9845, 77.7064], "nagpur": [21.1458, 79.0882], "patna": [25.5941, 85.1376],
+  "roorkee": [29.8543, 77.8880], "rourkela": [22.2604, 84.8536], "sambalpur": [21.4669, 83.9812], "solan": [30.9045, 77.0967],
+  "surat": [21.1702, 72.8311], "vadodara": [22.3072, 73.1812], "visakhapatnam": [17.6868, 83.2185],
 };
 const MAX_KM_FROM_CITY = 60;
 

@@ -2,6 +2,7 @@ import { supabase, safeQuery } from "./supabaseClient";
 import { deleteFromR2 } from "./r2Upload";
 import { isLandType, stripBuildingFields, resolvePlotArea, plotDetailsSummary } from "./landListing";
 import { applyProfile } from "./listingProfile";
+import { cleanUnitConfigs, unitConfigsForForm, cleanTrend, trendForForm, bhkFromUnits, smallestArea, lowestPrice, formatPrice, unitSummaryText, handoverText, NEW_LISTING_COLUMNS } from "./unitSizes";
 import { transactionFor } from "./propertyTypes";
 
 // Shown when a listing has no photos yet (e.g. just created, images still uploading)
@@ -135,6 +136,12 @@ export function normalizeListing(row) {
     floor: row.floor || null,
     facing: row.facing || null,
     age: row.age || null,
+
+    // ── Several sizes in one project / handover / price trend (migration 032) ──
+    unitConfigs: cleanUnitConfigs(row.unit_configurations),
+    handoverDate: row.handover_date || null,
+    handoverTimeline: row.handover_timeline || null,
+    priceTrend: cleanTrend(row.price_trend),
 
     // ── Project identity ──
     projectName: row.project_name || null,
@@ -396,7 +403,10 @@ function deriveFloorText(floorNumber, totalFloors) {
 // Plot-specific columns (migration_029). Sent for land listings, and for other
 // types only when the owner actually filled one in — so ordinary flat/villa
 // listings never depend on the migration.
-export const PLOT_COLUMNS = ["plot_length_ft", "plot_width_ft", "road_width_ft", "corner_plot", "boundary_wall", "land_use", "plot_approval"];
+export const PLOT_COLUMNS_BASE = ["plot_length_ft", "plot_width_ft", "road_width_ft", "corner_plot", "boundary_wall", "land_use", "plot_approval"];
+
+// Plot columns (migration 029) + unit-size / handover / trend columns (migration 032).
+export const PLOT_COLUMNS = [...PLOT_COLUMNS_BASE, ...NEW_LISTING_COLUMNS];
 
 function positiveOrNull(v) {
   const n = Number(v);
@@ -428,10 +438,14 @@ function isMissingPlotColumnError(error) {
 function withoutPlotColumns(payload, property) {
   const next = { ...payload };
   PLOT_COLUMNS.forEach((c) => delete next[c]);
-  const summary = plotDetailsSummary(property);
-  if (summary && !String(next.description || "").includes(summary)) {
-    next.description = [next.description, summary].filter(Boolean).join("\n\n");
-  }
+  const extras = [
+    plotDetailsSummary(property),
+    unitSummaryText(cleanUnitConfigs(property.unitConfigs)),
+    handoverText(property.handoverDate, property.handoverTimeline).length ? `Handover: ${handoverText(property.handoverDate, property.handoverTimeline).join(" — ")}` : "",
+  ].filter(Boolean);
+  extras.forEach((summary) => {
+    if (!String(next.description || "").includes(summary)) next.description = [next.description, summary].filter(Boolean).join("\n\n");
+  });
   return next;
 }
 
@@ -443,6 +457,8 @@ export function denormalizeListing(input) {
   const superBuiltUpArea = f.superBuiltUpArea ? parseInt(f.superBuiltUpArea, 10) || null : null;
   const carpetArea = f.carpetArea ? parseInt(f.carpetArea, 10) || null : null;
   const plotArea = resolvePlotArea(f);
+  const units = cleanUnitConfigs(f.unitConfigs);
+  const lowestUnitPrice = lowestPrice(units);
   const floorNumber = f.floorNumber !== "" && f.floorNumber != null ? parseInt(f.floorNumber, 10) : null;
   const totalFloors = f.totalFloors ? parseInt(f.totalFloors, 10) || null : null;
 
@@ -450,20 +466,24 @@ export function denormalizeListing(input) {
     title: f.title,
     location: f.location,
     property_type: f.type,
-    price_label: f.priceOnRequest ? PRICE_ON_REQUEST_LABEL : f.price,
-    price_value: f.priceOnRequest ? null : (Number(f.priceRaw) || 0),
+    price_label: f.priceOnRequest ? PRICE_ON_REQUEST_LABEL : (f.price || (lowestUnitPrice ? `From ${formatPrice(lowestUnitPrice)}` : f.price)),
+    price_value: f.priceOnRequest ? null : (Number(f.priceRaw) || lowestUnitPrice || 0),
     price_on_request: !!f.priceOnRequest,
     status: f.moderationStatus || "Pending",
     posted_by: f.postedBy,
     transaction_type: transactionFor(f.listingType, f.transactionType),
     listing_type: f.listingType || null,
     possession: f.status || null,
-    bhk: Array.isArray(f.bhk) ? f.bhk : (f.bhk ? [f.bhk] : []),
+    bhk: Array.from(new Set([...(Array.isArray(f.bhk) ? f.bhk : (f.bhk ? [f.bhk] : [])), ...bhkFromUnits(units)])),
+    unit_configurations: units,
+    handover_date: f.handoverDate || null,
+    handover_timeline: f.handoverTimeline ? String(f.handoverTimeline).trim() || null : null,
+    price_trend: cleanTrend(f.priceTrend),
     // area_sqft stays in sync automatically — first area figure the admin/owner
     // actually filled in (built-up > super built-up > carpet > plot), falling
     // back to a legacy plain "area" value only if none of those are set — so
     // existing cards, sorting, and search filters keep working unchanged.
-    area_sqft: (isLandType(f.type) ? plotArea : null) || builtUpArea || superBuiltUpArea || carpetArea || plotArea || (f.area ? parseInt(f.area, 10) || null : null),
+    area_sqft: (isLandType(f.type) ? plotArea : null) || builtUpArea || superBuiltUpArea || carpetArea || plotArea || smallestArea(units) || (f.area ? parseInt(f.area, 10) || null : null),
     // legacy `floor` text stays in sync from the structured fields below,
     // unless something already set it directly (e.g. old data).
     floor: deriveFloorText(floorNumber, totalFloors) || f.floor || null,
@@ -762,7 +782,25 @@ export async function createListing(property) {
     ({ data, error } = await safeQuery(supabase.from("listings").insert(withoutPlotColumns(payload, property)).select(LISTING_SELECT).single()));
   }
   if (error) return { data: null, error };
-  return { data: normalizeListing(data), error: null };
+  // The poster's phone number lives in its own private table (see migration 032).
+  let contactSaved = true;
+  const phone = String(property.contactPhone || "").replace(/\D/g, "").slice(-10);
+  if (phone) {
+    const { error: cErr } = await safeQuery(
+      supabase.from("listing_contacts").insert({ listing_id: data.id, phone, posted_by_user_id: payload.posted_by_user_id || null })
+    );
+    if (cErr) { contactSaved = false; console.warn("Couldn't save contact number:", cErr.message); }
+  }
+  return { data: normalizeListing(data), error: null, contactSaved };
+}
+
+// Admin approval screen: the poster's number for each listing (id -> phone).
+export async function fetchListingContacts(ids) {
+  if (!ids || ids.length === 0) return {};
+  const { data } = await safeQuery(supabase.from("listing_contacts").select("listing_id, phone").in("listing_id", ids.slice(0, 500)));
+  const map = {};
+  (data || []).forEach((r) => { map[r.listing_id] = r.phone; });
+  return map;
 }
 
 export async function updateListing(id, property) {
