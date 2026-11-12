@@ -4,6 +4,7 @@ import { isLandType, stripBuildingFields, resolvePlotArea, plotDetailsSummary } 
 import { applyProfile } from "./listingProfile";
 import { cleanUnitConfigs, unitConfigsForForm, cleanTrend, trendForForm, bhkFromUnits, smallestArea, lowestPrice, formatPrice, unitSummaryText, handoverText, NEW_LISTING_COLUMNS } from "./unitSizes";
 import { transactionFor } from "./propertyTypes";
+import { parsePriceInput } from "./priceUtils";
 
 // Shown when a listing has no photos yet (e.g. just created, images still uploading)
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=380&fit=crop";
@@ -479,6 +480,7 @@ export function denormalizeListing(input) {
   const plotArea = resolvePlotArea(f);
   const units = cleanUnitConfigs(f.unitConfigs);
   const lowestUnitPrice = lowestPrice(units);
+  const parsedPrice = parsePriceInput(f.priceRaw || f.price, transactionFor(f.listingType, f.transactionType));
   const floorNumber = f.floorNumber !== "" && f.floorNumber != null ? parseInt(f.floorNumber, 10) : null;
   const totalFloors = f.totalFloors ? parseInt(f.totalFloors, 10) || null : null;
 
@@ -486,8 +488,12 @@ export function denormalizeListing(input) {
     title: f.title,
     location: f.location,
     property_type: f.type,
-    price_label: f.priceOnRequest ? PRICE_ON_REQUEST_LABEL : (f.price || (lowestUnitPrice ? `From ${formatPrice(lowestUnitPrice)}` : f.price)),
-    price_value: f.priceOnRequest ? null : (Number(f.priceRaw) || lowestUnitPrice || 0),
+    price_label: f.priceOnRequest
+      ? PRICE_ON_REQUEST_LABEL
+      : (parsedPrice.label || f.price || (lowestUnitPrice ? `From ${formatPrice(lowestUnitPrice)}` : f.price)),
+    price_value: f.priceOnRequest
+      ? null
+      : (parsedPrice.numericValue || lowestUnitPrice || 0),
     price_on_request: !!f.priceOnRequest,
     status: f.moderationStatus || "Pending",
     posted_by: f.postedBy,

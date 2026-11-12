@@ -11,6 +11,7 @@ import { parseGoogleMapsLocation } from "../../lib/googleMaps";
 import { withExtraTypes, transactionFor } from "../../lib/propertyTypes";
 import { getFormProfile, AREA_LABELS } from "../../lib/listingProfile";
 import { isLandType, PLOT_AREA_UNITS, LAND_USE_OPTIONS as DEFAULT_LAND_USE_OPTIONS, PLOT_APPROVAL_OPTIONS, LAND_PHOTO_LABELS, resolvePlotArea, landValidationMessage, formatPlotArea } from "../../lib/landListing";
+import { parsePriceInput } from "../../lib/priceUtils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 // Fallback defaults — used until the dynamic options load (or if "Site
@@ -438,7 +439,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       ...EMPTY_FORM,
       ...editingListing,
       area: areaNumeric,
-      priceRaw: editingListing.priceOnRequest ? "" : editingListing.priceRaw,
+      priceRaw: editingListing.priceOnRequest ? "" : (editingListing.price || (editingListing.priceRaw ? String(editingListing.priceRaw) : "")),
       listingCode: nullToEmpty(editingListing.listingCode),
       listingType: nullToEmpty(editingListing.listingType) || EMPTY_FORM.listingType,
       projectName: nullToEmpty(editingListing.projectName),
@@ -835,9 +836,12 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   }
 
   function priceLabelFromRaw(raw) {
-    const n = Number(raw) || 0;
-    if (form.transactionType === "Rent") return `₹${n.toLocaleString("en-IN")}/month`;
-    return n >= 10000000 ? `₹${(n / 10000000).toFixed(2)} Cr` : `₹${(n / 100000).toFixed(0)} Lac`;
+    return parsePriceInput(raw, form.transactionType).label;
+  }
+
+  function numericPrice() {
+    if (form.priceOnRequest) return 0;
+    return parsePriceInput(form.priceRaw, form.transactionType).numericValue;
   }
 
   // ── Section 2B live previews ── computed straight from current form state,
@@ -851,13 +855,13 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
   function pricePerSqftPreview() {
     const area = estimatedAreaSqft();
-    const price = form.priceOnRequest ? 0 : Number(form.priceRaw) || 0;
+    const price = numericPrice();
     if (!area || !price) return null;
     return Math.round(price / area);
   }
 
   function emiPreview() {
-    const price = form.priceOnRequest ? 0 : Number(form.priceRaw) || 0;
+    const price = numericPrice();
     const rate = Number(form.emiInterestRate) || 0;
     const years = Number(form.emiTenureYears) || 0;
     const downPct = Number(form.emiDownPaymentPercent) || 0;
@@ -872,14 +876,14 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   }
 
   function downPaymentPreview() {
-    const price = form.priceOnRequest ? 0 : Number(form.priceRaw) || 0;
+    const price = numericPrice();
     const downPct = Number(form.emiDownPaymentPercent) || 0;
     if (!price) return null;
     return Math.round(price * (downPct / 100));
   }
 
   function rentalYieldPreview() {
-    const price = form.priceOnRequest ? 0 : Number(form.priceRaw) || 0;
+    const price = numericPrice();
     const rent = Number(form.estimatedMonthlyRent) || 0;
     if (!price || !rent) return null;
     return ((rent * 12 / price) * 100).toFixed(2);
@@ -912,7 +916,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     e.preventDefault();
     setSaveError("");
 
-    if (!form.title || !form.location || (!form.priceOnRequest && !form.priceRaw)) {
+    if (!form.title || !form.location || (!form.priceOnRequest && !String(form.priceRaw).trim())) {
       setSaveError('Title, location, and price are required — or check "Call for Details" if you\'d rather not list a price.');
       return;
     }
@@ -1412,38 +1416,71 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             {googleLinkNote && <p className="text-xs mt-1.5" style={{ color: googleLinkNote.startsWith("Pin placed") ? "#16A34A" : "#B45309" }}>{googleLinkNote}</p>}
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field label={`Price (${form.transactionType === "Rent" ? "₹ / month" : "₹ total"})`} required={!form.priceOnRequest}>
-              <TextInput
-                type="number" min="0"
-                value={form.priceRaw}
-                onChange={(e) => set("priceRaw", e.target.value)}
-                placeholder="e.g. 24000000"
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field
+                label={`Price (${form.transactionType === "Rent" ? "₹ / month" : "₹ total"})`}
                 required={!form.priceOnRequest}
-                disabled={form.priceOnRequest}
+                hint="Single price (e.g. 60000 or 2.4 Cr) or price range (e.g. 6000-60000 or ₹6000 - ₹60000)"
+              >
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm select-none">
+                    ₹
+                  </div>
+                  <TextInput
+                    type="text"
+                    value={form.priceRaw}
+                    onChange={(e) => set("priceRaw", e.target.value)}
+                    placeholder={form.transactionType === "Rent" ? "e.g. 6000 - 60000 or 25000" : "e.g. 24000000 or 50 Lac - 1.2 Cr"}
+                    required={!form.priceOnRequest}
+                    disabled={form.priceOnRequest}
+                    className="pl-8"
+                  />
+                </div>
+              </Field>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Quick helpers:</span>
+              <button
+                type="button"
+                onClick={() => set("priceRaw", form.transactionType === "Rent" ? "6000 - 60000" : "50 Lac - 1.2 Cr")}
+                className="px-2 py-0.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition"
+              >
+                + Price Range
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const curr = form.priceRaw || "";
+                  if (!curr.startsWith("₹")) set("priceRaw", `₹ ${curr}`.trim());
+                }}
+                className="px-2 py-0.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition"
+              >
+                + ₹ Sign
+              </button>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer pt-1" style={{ color: "#1F2937" }}>
+              <input
+                type="checkbox"
+                checked={form.priceOnRequest}
+                onChange={(e) => set("priceOnRequest", e.target.checked)}
+                className="w-4 h-4 rounded accent-[#1565C0]"
               />
-            </Field>
+              Don't list a price — show "Call for Details" instead
+            </label>
+
+            {form.priceOnRequest ? (
+              <p className="text-xs" style={{ color: "#6B7280" }}>
+                Will display as <span className="font-bold" style={{ color: "#1565C0" }}>Call for Details</span> — buyers/tenants see no number and must contact the poster directly.
+              </p>
+            ) : form.priceRaw ? (
+              <p className="text-xs" style={{ color: "#6B7280" }}>
+                Will display as <span className="font-bold" style={{ color: "#1565C0" }}>{priceLabelFromRaw(form.priceRaw)}</span>
+              </p>
+            ) : null}
           </div>
-
-          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer -mt-2" style={{ color: "#1F2937" }}>
-            <input
-              type="checkbox"
-              checked={form.priceOnRequest}
-              onChange={(e) => set("priceOnRequest", e.target.checked)}
-              className="w-4 h-4 rounded accent-[#1565C0]"
-            />
-            Don't list a price — show "Call for Details" instead
-          </label>
-
-          {form.priceOnRequest ? (
-            <p className="text-xs" style={{ color: "#6B7280" }}>
-              Will display as <span className="font-bold" style={{ color: "#1565C0" }}>Call for Details</span> — buyers/tenants see no number and must contact the poster directly.
-            </p>
-          ) : form.priceRaw ? (
-            <p className="text-xs" style={{ color: "#6B7280" }}>
-              Will display as <span className="font-bold" style={{ color: "#1565C0" }}>{priceLabelFromRaw(form.priceRaw)}</span>
-            </p>
-          ) : null}
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Posted By">
