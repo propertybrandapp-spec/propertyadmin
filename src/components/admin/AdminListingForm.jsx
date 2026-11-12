@@ -560,6 +560,41 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   const POSSESSION_OPTIONS = options?.possessionOptions?.length ? options.possessionOptions : DEFAULT_POSSESSION_OPTIONS;
   const LAND_USE_OPTIONS = options?.landUseOptions?.length ? options.landUseOptions : DEFAULT_LAND_USE_OPTIONS;
 
+  const [customBhkList, setCustomBhkList] = useState([]);
+  const [showCustomBhk, setShowCustomBhk] = useState(false);
+  const [customBhkDraft, setCustomBhkDraft] = useState("");
+
+  const [customPossessionList, setCustomPossessionList] = useState([]);
+  const [showCustomPossession, setShowCustomPossession] = useState(false);
+  const [customPossessionDraft, setCustomPossessionDraft] = useState("");
+
+  const [customTypeList, setCustomTypeList] = useState([]);
+  const [showCustomType, setShowCustomType] = useState(false);
+  const [customTypeDraft, setCustomTypeDraft] = useState("");
+
+  const [customLandUseList, setCustomLandUseList] = useState([]);
+  const [showCustomLandUse, setShowCustomLandUse] = useState(false);
+  const [customLandUseDraft, setCustomLandUseDraft] = useState("");
+
+  const allBhkOptions = Array.from(new Set([...BHK_OPTIONS, ...customBhkList, ...(Array.isArray(form.bhk) ? form.bhk : [])]));
+  const allPropertyTypes = Array.from(new Set([...PROPERTY_TYPES, ...customTypeList, ...(form.type ? [form.type] : [])]));
+  const allPossessionOptions = Array.from(new Set([...POSSESSION_OPTIONS, ...customPossessionList, ...(form.status ? [form.status] : [])]));
+  const allLandUseOptions = Array.from(new Set([...LAND_USE_OPTIONS, ...customLandUseList, ...(form.landUse ? [form.landUse] : [])]));
+
+  function handleAddCustomBhk() {
+    const val = customBhkDraft.trim();
+    if (!val) return;
+    const formatted = /^\d+(\.\d+)?$/.test(val) ? `${val} BHK` : val;
+    if (!customBhkList.includes(formatted)) {
+      setCustomBhkList((prev) => [...prev, formatted]);
+    }
+    if (!form.bhk.includes(formatted)) {
+      setForm((f) => ({ ...f, bhk: [...f.bhk, formatted] }));
+    }
+    setCustomBhkDraft("");
+    setShowCustomBhk(false);
+  }
+
   function addVideoUrl() {
     if (!videoDraft.trim()) return;
     setForm((f) => ({ ...f, videoUrls: [...f.videoUrls, videoDraft.trim()] }));
@@ -1121,21 +1156,105 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </Select>
             </Field>
             <Field label="Property Type">
-              <Select value={form.type} onChange={(e) => {
-                const t = e.target.value;
-                setForm((f) => ({
-                  ...f,
-                  type: t,
-                  ...((t === "Agricultural Land" || t === "Farmhouse") && !f.landUse ? { landUse: "Agricultural" } : {})
-                }));
-              }}>
-                {PROPERTY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </Select>
+              {showCustomType ? (
+                <div className="flex gap-2">
+                  <TextInput
+                    value={customTypeDraft}
+                    onChange={(e) => setCustomTypeDraft(e.target.value)}
+                    placeholder="e.g. Row House / Penthouse"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = customTypeDraft.trim();
+                      if (val) {
+                        setCustomTypeList((prev) => [...prev, val]);
+                        set("type", val);
+                      }
+                      setShowCustomType(false);
+                      setCustomTypeDraft("");
+                    }}
+                    className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowCustomType(false); setCustomTypeDraft(""); }}
+                    className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <Select
+                  value={form.type}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setShowCustomType(true);
+                    } else {
+                      const t = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        type: t,
+                        ...((t === "Agricultural Land" || t === "Farmhouse") && !f.landUse ? { landUse: "Agricultural" } : {})
+                      }));
+                    }
+                  }}
+                >
+                  {allPropertyTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                  <option value="__custom__">+ Add Custom Type...</option>
+                </Select>
+              )}
             </Field>
             <Field label="Possession">
-              <Select value={form.status} onChange={(e) => set("status", e.target.value)}>
-                {POSSESSION_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
-              </Select>
+              {showCustomPossession ? (
+                <div className="flex gap-2">
+                  <TextInput
+                    value={customPossessionDraft}
+                    onChange={(e) => setCustomPossessionDraft(e.target.value)}
+                    placeholder="e.g. Immediate / Ready Dec 2026"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = customPossessionDraft.trim();
+                      if (val) {
+                        setCustomPossessionList((prev) => [...prev, val]);
+                        set("status", val);
+                      }
+                      setShowCustomPossession(false);
+                      setCustomPossessionDraft("");
+                    }}
+                    className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowCustomPossession(false); setCustomPossessionDraft(""); }}
+                    className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <Select
+                  value={form.status}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setShowCustomPossession(true);
+                    } else {
+                      set("status", e.target.value);
+                    }
+                  }}
+                >
+                  {allPossessionOptions.map((p) => <option key={p} value={p}>{p}</option>)}
+                  <option value="__custom__">+ Add Custom...</option>
+                </Select>
+              )}
             </Field>
           </div>
 
@@ -1171,10 +1290,53 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="Land Use">
-                    <Select value={form.landUse} onChange={(e) => set("landUse", e.target.value)}>
-                      <option value="">— Select —</option>
-                      {LAND_USE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </Select>
+                    {showCustomLandUse ? (
+                      <div className="flex gap-2">
+                        <TextInput
+                          value={customLandUseDraft}
+                          onChange={(e) => setCustomLandUseDraft(e.target.value)}
+                          placeholder="e.g. Farmhouse Zoning"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = customLandUseDraft.trim();
+                            if (val) {
+                              setCustomLandUseList((prev) => [...prev, val]);
+                              set("landUse", val);
+                            }
+                            setShowCustomLandUse(false);
+                            setCustomLandUseDraft("");
+                          }}
+                          className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowCustomLandUse(false); setCustomLandUseDraft(""); }}
+                          className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <Select
+                        value={form.landUse}
+                        onChange={(e) => {
+                          if (e.target.value === "__custom__") {
+                            setShowCustomLandUse(true);
+                          } else {
+                            set("landUse", e.target.value);
+                          }
+                        }}
+                      >
+                        <option value="">— Select —</option>
+                        {allLandUseOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+                        <option value="__custom__">+ Add Custom Land Use...</option>
+                      </Select>
+                    )}
                   </Field>
                   <Field label="Approval / Layout">
                     <Select value={form.plotApproval} onChange={(e) => set("plotApproval", e.target.value)}>
@@ -1238,10 +1400,52 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </div>
             ) : profile.bhk ? (
           <Field label="BHK" hint="Select all that apply — e.g. a project offering both 2 BHK and 3 BHK units.">
-            <div className="flex flex-wrap gap-2">
-              {BHK_OPTIONS.map((b) => (
+            <div className="flex flex-wrap items-center gap-2">
+              {allBhkOptions.map((b) => (
                 <Chip key={b} label={b} active={form.bhk.includes(b)} onClick={() => toggleInArray("bhk", b)} />
               ))}
+              {showCustomBhk ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-blue-400 bg-blue-50/60">
+                  <input
+                    type="text"
+                    value={customBhkDraft}
+                    onChange={(e) => setCustomBhkDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddCustomBhk();
+                      } else if (e.key === "Escape") {
+                        setShowCustomBhk(false);
+                      }
+                    }}
+                    placeholder="e.g. 2.5 BHK, 6 BHK"
+                    className="text-xs bg-transparent outline-none w-28 text-slate-800 font-semibold placeholder:text-slate-400"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomBhk}
+                    className="text-xs font-bold text-blue-700 hover:text-blue-900 px-1 py-0.5 rounded"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowCustomBhk(false); setCustomBhkDraft(""); }}
+                    className="text-xs text-slate-400 hover:text-slate-600 px-0.5"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomBhk(true)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-full border border-dashed border-blue-400 text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="text-sm font-bold leading-none">+</span> Custom
+                </button>
+              )}
             </div>
           </Field>
             ) : null}
