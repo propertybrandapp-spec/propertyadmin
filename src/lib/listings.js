@@ -621,8 +621,8 @@ export function denormalizeListing(input) {
     // Strip the client-only `_key` (React list key) before saving.
     nearby_landmarks: Array.isArray(f.nearbyLandmarks)
       ? f.nearbyLandmarks
-          .filter((l) => l.name || l.distance || l.travelTime)
-          .map(({ category, name, distance, travelTime }) => ({ category, name, distance, travelTime }))
+        .filter((l) => l.name || l.distance || l.travelTime)
+        .map(({ category, name, distance, travelTime }) => ({ category, name, distance, travelTime }))
       : [],
     road_width: f.roadWidth || null,
     approach_road_details: f.approachRoadDetails || null,
