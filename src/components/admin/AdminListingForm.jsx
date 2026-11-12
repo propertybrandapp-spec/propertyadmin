@@ -2044,8 +2044,12 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                       {CONSTRUCTION_STAGE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </Select>
                   </Field>
-                  <Field label="Expected Possession Date">
-                    <TextInput type="date" value={form.projectExpectedPossessionDate} onChange={(e) => set("projectExpectedPossessionDate", e.target.value)} />
+                  <Field label="Expected Possession (Month & Year)">
+                    <TextInput
+                      type="month"
+                      value={(form.projectExpectedPossessionDate || "").slice(0, 7)}
+                      onChange={(e) => set("projectExpectedPossessionDate", e.target.value ? `${e.target.value}-01` : "")}
+                    />
                   </Field>
                 </div>
                 {form.projectConstructionStageVerifiedAt && (

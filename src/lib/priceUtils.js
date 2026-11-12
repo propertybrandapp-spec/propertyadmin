@@ -136,3 +136,4 @@ export function parsePriceInput(raw, transactionType = "Buy") {
     label: customLabel,
   };
 }
+
