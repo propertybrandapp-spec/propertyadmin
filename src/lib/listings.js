@@ -375,6 +375,9 @@ export function normalizeListing(row) {
 
     images: row.images && row.images.length ? row.images : (row.image_url ? [row.image_url] : [PLACEHOLDER_IMAGE]),
     videoUrls: row.video_urls || [],
+    locationVideoUrl: row.location_video_url || null,
+    idealFor: Array.isArray(row.ideal_for) ? row.ideal_for : (row.ideal_for ? [row.ideal_for] : []),
+    investmentCorridor: row.investment_corridor || null,
     googleMapsLink: row.google_maps_link || null,
     latitude: row.latitude != null ? Number(row.latitude) : null,
     longitude: row.longitude != null ? Number(row.longitude) : null,
@@ -451,14 +454,16 @@ function plotColumns(f) {
 // If the database hasn't had migration_029 applied yet, PostgREST rejects the
 // plot columns. Rather than failing the whole listing, retry without them and
 // keep the plot facts in the description so nothing the owner typed is lost.
+const NEW_OPTIONAL_COLUMNS = ["location_video_url", "ideal_for", "open_for_jda", "jda_terms", "title_verified", "zoning_conversion_done"];
+
 function isMissingPlotColumnError(error) {
-  const msg = `${error?.message || ""} ${error?.details || ""}`;
-  return PLOT_COLUMNS.some((c) => msg.includes(c));
+  const msg = `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
+  return [...PLOT_COLUMNS, ...NEW_OPTIONAL_COLUMNS].some((c) => msg.includes(c.toLowerCase()));
 }
 
 function withoutPlotColumns(payload, property) {
   const next = { ...payload };
-  PLOT_COLUMNS.forEach((c) => delete next[c]);
+  [...PLOT_COLUMNS, ...NEW_OPTIONAL_COLUMNS].forEach((c) => delete next[c]);
   const extras = [
     plotDetailsSummary(property),
     unitSummaryText(cleanUnitConfigs(property.unitConfigs)),
@@ -521,11 +526,15 @@ export function denormalizeListing(input) {
       ...(f.openForJda ? ["JDA", "Joint Development"] : []),
       ...(f.titleVerified ? ["Title Verified"] : []),
       ...(f.zoningDone ? ["Zoning Done"] : []),
+      ...(Array.isArray(f.idealFor) ? f.idealFor : []),
+      ...(f.investmentCorridor ? [f.investmentCorridor] : []),
     ])),
     amenities: f.amenities || [],
     images: f.images || [],
     image_url: f.images && f.images[0] ? f.images[0] : null,
     video_urls: f.videoUrls || [],
+    location_video_url: f.locationVideoUrl || null,
+    ideal_for: Array.isArray(f.idealFor) ? f.idealFor : [],
     google_maps_link: f.googleMapsLink || null,
     latitude: f.latitude != null && f.latitude !== "" ? Number(f.latitude) : null,
     longitude: f.longitude != null && f.longitude !== "" ? Number(f.longitude) : null,

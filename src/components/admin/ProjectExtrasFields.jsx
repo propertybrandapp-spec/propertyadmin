@@ -151,7 +151,7 @@ export default function ProjectExtrasFields({ form, set, isLand = false, hasBhk 
           columns={[
             { key: "label", label: "Size name", placeholder: isLand ? "e.g. 30×40 plot" : hasBhk ? "e.g. 3 BHK" : "e.g. Unit A" },
             { key: "areaSqft", label: "Area (sq ft)", placeholder: "Area (sq ft)", numeric: true },
-            { key: "price", label: "Price (₹)", placeholder: "Price in ₹ e.g. 6200000", numeric: true },
+            { key: "price", label: "Price (₹)", placeholder: "e.g. ₹60,000 - ₹80,000 or ₹62 Lac", numeric: false },
           ]}
         />
       </div>

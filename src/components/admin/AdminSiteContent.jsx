@@ -15,6 +15,7 @@ import {
   FIELD_TYPES, fetchAdminListingFieldOptions, createListingFieldOption, updateListingFieldOption, deleteListingFieldOption,
 } from "../../lib/listingOptions";
 import { uploadToR2, validateImageFile } from "../../lib/r2Upload";
+import { fetchAdminListings } from "../../lib/listings";
 
 const TABS = [
   { id: "hero", label: "Hero Content" },
@@ -749,14 +750,49 @@ function PlansPanel() {
 // Investment Opportunities
 // ═══════════════════════════════════════════════════════════════════════════
 
-const EMPTY_INVESTMENT = { city: "Bhubaneswar", area: "", tag: "", tagColor: "bg-blue-100 text-[#1565C0]", appreciation: "", rentalYield: "", priceRange: "", type: "Residential", image: "", active: true, order: 0 };
+const EMPTY_INVESTMENT = { city: "Bhubaneswar", area: "", tag: "", tagColor: "bg-blue-100 text-[#1565C0]", appreciation: "", rentalYield: "", priceRange: "", type: "Residential", image: "", active: true, order: 0, linkedListingIds: [] };
 const PROPERTY_TYPES = ["Residential", "Apartments", "Commercial", "Plots"];
 
 function InvestmentForm({ initial, onCancel, onSaved }) {
-  const [form, setForm] = useState(initial);
+  const [form, setForm] = useState({
+    ...initial,
+    linkedListingIds: Array.isArray(initial.linkedListingIds) ? initial.linkedListingIds : [],
+  });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [allListings, setAllListings] = useState([]);
+  const [loadingListings, setLoadingListings] = useState(true);
+  const [listingSearch, setListingSearch] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAdminListings().then(({ data }) => {
+      if (!cancelled) {
+        setAllListings(data || []);
+        setLoadingListings(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  function toggleLinkedListing(id) {
+    const current = form.linkedListingIds || [];
+    const next = current.includes(id)
+      ? current.filter((x) => x !== id)
+      : [...current, id];
+    setForm({ ...form, linkedListingIds: next });
+  }
+
+  function selectAllMatchingArea() {
+    if (!form.area) return;
+    const q = form.area.toLowerCase();
+    const matching = allListings.filter(
+      (l) => (l.location || "").toLowerCase().includes(q) || (l.title || "").toLowerCase().includes(q)
+    );
+    const ids = Array.from(new Set([...(form.linkedListingIds || []), ...matching.map((l) => l.dbId || l.id)]));
+    setForm({ ...form, linkedListingIds: ids });
+  }
 
   async function handleImageChange(e) {
     const file = e.target.files?.[0];
@@ -764,8 +800,6 @@ function InvestmentForm({ initial, onCancel, onSaved }) {
     const validationError = validateImageFile(file);
     if (validationError) { setError(validationError); return; }
     setUploading(true); setError("");
-    // Reuses the "listings" folder on the shared upload Worker — avoids
-    // needing a Worker redeploy just to add a new folder name.
     const { url, error: uploadError } = await uploadToR2(file, "listings");
     setUploading(false);
     if (uploadError) { setError("Image upload failed."); return; }
@@ -803,6 +837,86 @@ function InvestmentForm({ initial, onCancel, onSaved }) {
           <Field label="Rental yield"><TextInput value={form.rentalYield} onChange={(e) => setForm({ ...form, rentalYield: e.target.value })} placeholder="e.g. 4.2%" /></Field>
           <Field label="Price range"><TextInput value={form.priceRange} onChange={(e) => setForm({ ...form, priceRange: e.target.value })} placeholder="e.g. ₹45 – 80 Lac" /></Field>
         </div>
+
+        {/* ── Link Specific Properties ── */}
+        <div className="rounded-xl p-4 space-y-3" style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <p className="text-sm font-bold flex items-center gap-1.5" style={{ color: "#1F2937" }}>
+                <span>🔗</span> Link Properties to this Investment Opportunity ({(form.linkedListingIds || []).length} linked)
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>
+                When visitors click &quot;View properties here →&quot; on the public site, these specific properties are shown.
+              </p>
+            </div>
+            {form.area && (
+              <button
+                type="button"
+                onClick={selectAllMatchingArea}
+                className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              >
+                + Select all matching &quot;{form.area}&quot;
+              </button>
+            )}
+          </div>
+
+          <TextInput
+            value={listingSearch}
+            onChange={(e) => setListingSearch(e.target.value)}
+            placeholder="Search properties by title, locality, or type to link..."
+          />
+
+          {loadingListings ? (
+            <p className="text-xs text-slate-400 py-2">Loading properties...</p>
+          ) : (
+            <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+              {allListings
+                .filter((l) => {
+                  if (!listingSearch.trim()) return true;
+                  const q = listingSearch.toLowerCase();
+                  return (
+                    (l.title || "").toLowerCase().includes(q) ||
+                    (l.location || "").toLowerCase().includes(q) ||
+                    (l.type || "").toLowerCase().includes(q)
+                  );
+                })
+                .map((l) => {
+                  const id = l.dbId || l.id;
+                  const isChecked = (form.linkedListingIds || []).includes(id);
+                  return (
+                    <label
+                      key={id}
+                      className={`flex items-center gap-3 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                        isChecked
+                          ? "bg-blue-50/80 border-blue-300"
+                          : "bg-white border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleLinkedListing(id)}
+                        className="w-4 h-4 rounded accent-[#1565C0]"
+                      />
+                      {l.images?.[0] && (
+                        <img src={l.images[0]} alt="" className="w-9 h-9 rounded object-cover shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-800 truncate">{l.title}</p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {l.location} · {l.type} · <span className="font-bold text-slate-700">{l.price}</span>
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              {allListings.length === 0 && (
+                <p className="text-xs text-slate-400 py-2">No properties found in database.</p>
+              )}
+            </div>
+          )}
+        </div>
+
         <Field label="Image" hint="Uploads to the same photo storage as property listings.">
           <div className="flex items-center gap-3">
             {form.image && <img src={form.image} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0" />}
@@ -844,9 +958,12 @@ function InvestmentsPanel() {
             <div className="flex items-center gap-3 min-w-0">
               {o.image && <img src={o.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />}
               <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <p className="text-sm font-bold" style={{ color: "#1F2937" }}>{o.area}, {o.city}</p>
                   <ActivePill active={o.active} />
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                    🔗 {(o.linkedListingIds || []).length} linked propert{(o.linkedListingIds || []).length === 1 ? "y" : "ies"}
+                  </span>
                 </div>
                 <p className="text-xs" style={{ color: "#6B7280" }}>{o.tag} · {o.type} · {o.appreciation} appreciation · {o.priceRange}</p>
               </div>

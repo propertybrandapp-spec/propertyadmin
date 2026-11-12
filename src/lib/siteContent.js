@@ -230,6 +230,7 @@ export function normalizeInvestmentOpportunity(row) {
     image: row.image_url,
     active: row.is_active,
     order: row.display_order,
+    linkedListingIds: Array.isArray(row.linked_listing_ids) ? row.linked_listing_ids : [],
     createdAt: row.created_at,
   };
 }
@@ -253,23 +254,36 @@ function denormalizeInvestmentOpportunity(o) {
     price_range: o.priceRange || null,
     property_type: o.type || null,
     image_url: o.image || null,
+    linked_listing_ids: Array.isArray(o.linkedListingIds) ? o.linkedListingIds : [],
     is_active: o.active !== false,
     display_order: o.order || 0,
   };
 }
 
 export async function createInvestmentOpportunity(opp) {
-  const { data, error } = await safeQuery(
-    supabase.from("investment_opportunities").insert(denormalizeInvestmentOpportunity(opp)).select().single()
+  const payload = denormalizeInvestmentOpportunity(opp);
+  let { data, error } = await safeQuery(
+    supabase.from("investment_opportunities").insert(payload).select().single()
   );
+  if (error && error.message?.includes("linked_listing_ids")) {
+    const fallback = { ...payload };
+    delete fallback.linked_listing_ids;
+    ({ data, error } = await safeQuery(supabase.from("investment_opportunities").insert(fallback).select().single()));
+  }
   if (error) return { data: null, error };
   return { data: normalizeInvestmentOpportunity(data), error: null };
 }
 
 export async function updateInvestmentOpportunity(id, opp) {
-  const { data, error } = await safeQuery(
-    supabase.from("investment_opportunities").update(denormalizeInvestmentOpportunity(opp)).eq("id", id).select().single()
+  const payload = denormalizeInvestmentOpportunity(opp);
+  let { data, error } = await safeQuery(
+    supabase.from("investment_opportunities").update(payload).eq("id", id).select().single()
   );
+  if (error && error.message?.includes("linked_listing_ids")) {
+    const fallback = { ...payload };
+    delete fallback.linked_listing_ids;
+    ({ data, error } = await safeQuery(supabase.from("investment_opportunities").update(fallback).eq("id", id).select().single()));
+  }
   if (error) return { data: null, error };
   return { data: normalizeInvestmentOpportunity(data), error: null };
 }
