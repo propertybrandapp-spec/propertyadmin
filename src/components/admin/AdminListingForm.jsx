@@ -10,7 +10,7 @@ import LocationPicker, { reverseGeocode } from "./LocationPicker";
 import { parseGoogleMapsLocation } from "../../lib/googleMaps";
 import { withExtraTypes, transactionFor } from "../../lib/propertyTypes";
 import { getFormProfile, AREA_LABELS } from "../../lib/listingProfile";
-import { isLandType, PLOT_AREA_UNITS, LAND_USE_OPTIONS, PLOT_APPROVAL_OPTIONS, LAND_PHOTO_LABELS, resolvePlotArea, landValidationMessage, formatPlotArea } from "../../lib/landListing";
+import { isLandType, PLOT_AREA_UNITS, LAND_USE_OPTIONS as DEFAULT_LAND_USE_OPTIONS, PLOT_APPROVAL_OPTIONS, LAND_PHOTO_LABELS, resolvePlotArea, landValidationMessage, formatPlotArea } from "../../lib/landListing";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 // Fallback defaults — used until the dynamic options load (or if "Site
@@ -21,7 +21,7 @@ const DEFAULT_BHK_OPTIONS = ["1 RK", "1 BHK", "2 BHK", "3 BHK", "4 BHK", "5 BHK"
 const DEFAULT_TAGS_LIST = ["Luxury", "Affordable", "Gated Community", "Office", "Retail", "Industrial", "Co-living", "Student Accommodation", "New Launch", "Ready to Move", "RERA Approved", "Corner Plot", "Investment Opportunity"];
 const DEFAULT_AMENITIES = ["Lift", "Parking", "Visitor Parking", "Power Backup", "Security", "24x7 Security", "CCTV", "Intercom", "Swimming Pool", "Gym", "Garden", "Club House", "Multipurpose Hall", "Indoor Games", "Kids Play Area", "Jogging Track", "Amphitheatre", "Yoga / Meditation Area", "Senior Citizen Sitout", "Cafeteria", "WiFi", "Housekeeping", "Fire Safety", "Rain Water Harvesting", "Sewage Treatment Plant", "Solar Water Heating", "EV Charging Point", "Water Softener Plant", "Vaastu Compliant", "Pet Friendly", "Gated Community"];
 const FACING_OPTIONS = ["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"];
-const POSSESSION_OPTIONS = ["Ready to Move", "Under Construction"];
+const DEFAULT_POSSESSION_OPTIONS = ["Ready to Move", "Under Construction", "New Launch"];
 const POSTED_BY_OPTIONS = ["Owner", "Builder", "Channel Partner", "Agent", "Property Manager"];
 const MODERATION_OPTIONS = ["Live", "Pending", "Flagged", "Rejected"];
 // ── New in Section 2A: Property Identity & Basic Details ──
@@ -146,6 +146,10 @@ const EMPTY_FORM = {
   boundaryWall: false,
   landUse: "",
   plotApproval: "",
+  openForJda: false,
+  jdaTerms: "",
+  titleVerified: false,
+  zoningDone: false,
   floorNumber: "",
   totalFloors: "",
   totalUnits: "",
@@ -381,6 +385,10 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       boundaryWall: !!editingListing.boundaryWall,
       landUse: nullToEmpty(editingListing.landUse),
       plotApproval: nullToEmpty(editingListing.plotApproval),
+      openForJda: !!editingListing.openForJda,
+      jdaTerms: nullToEmpty(editingListing.jdaTerms),
+      titleVerified: !!editingListing.titleVerified,
+      zoningDone: !!editingListing.zoningDone,
       floorNumber: nullToEmpty(editingListing.floorNumber),
       totalFloors: nullToEmpty(editingListing.totalFloors),
       totalUnits: nullToEmpty(editingListing.totalUnits),
@@ -549,6 +557,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   const BHK_OPTIONS = options?.bhkOptions?.length ? options.bhkOptions : DEFAULT_BHK_OPTIONS;
   const TAGS_LIST = options?.tags?.length ? options.tags : DEFAULT_TAGS_LIST;
   const AMENITIES_PRESET = options?.amenities?.length ? options.amenities : DEFAULT_AMENITIES;
+  const POSSESSION_OPTIONS = options?.possessionOptions?.length ? options.possessionOptions : DEFAULT_POSSESSION_OPTIONS;
+  const LAND_USE_OPTIONS = options?.landUseOptions?.length ? options.landUseOptions : DEFAULT_LAND_USE_OPTIONS;
 
   function addVideoUrl() {
     if (!videoDraft.trim()) return;
@@ -1111,7 +1121,14 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </Select>
             </Field>
             <Field label="Property Type">
-              <Select value={form.type} onChange={(e) => set("type", e.target.value)}>
+              <Select value={form.type} onChange={(e) => {
+                const t = e.target.value;
+                setForm((f) => ({
+                  ...f,
+                  type: t,
+                  ...((t === "Agricultural Land" || t === "Farmhouse") && !f.landUse ? { landUse: "Agricultural" } : {})
+                }));
+              }}>
                 {PROPERTY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </Select>
             </Field>
@@ -1175,6 +1192,48 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                     <input type="checkbox" checked={form.boundaryWall} onChange={(e) => set("boundaryWall", e.target.checked)} className="w-4 h-4 rounded accent-[#1565C0]" />
                     Boundary wall built
                   </label>
+                </div>
+
+                <div className="pt-3 border-t border-slate-200/80 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Joint Development & Verification</p>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2">
+                    <label className="flex items-center gap-2 text-sm font-bold cursor-pointer" style={{ color: "#1565C0" }}>
+                      <input
+                        type="checkbox"
+                        checked={form.openForJda}
+                        onChange={(e) => set("openForJda", e.target.checked)}
+                        className="w-4 h-4 rounded accent-[#1565C0]"
+                      />
+                      <span>🤝 Open for Joint Development (JDA)</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+                      <input
+                        type="checkbox"
+                        checked={form.titleVerified}
+                        onChange={(e) => set("titleVerified", e.target.checked)}
+                        className="w-4 h-4 rounded accent-[#1565C0]"
+                      />
+                      🛡️ Title & Encumbrance Verified
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "#1F2937" }}>
+                      <input
+                        type="checkbox"
+                        checked={form.zoningDone}
+                        onChange={(e) => set("zoningDone", e.target.checked)}
+                        className="w-4 h-4 rounded accent-[#1565C0]"
+                      />
+                      📑 Zoning & Conversion Done
+                    </label>
+                  </div>
+                  {form.openForJda && (
+                    <Field label="JDA Terms / Revenue Share Ratio" hint="e.g. 50:50 Revenue Share, Area Sharing, or Open for builder proposals">
+                      <TextInput
+                        value={form.jdaTerms}
+                        onChange={(e) => set("jdaTerms", e.target.value)}
+                        placeholder="e.g. 50:50 Revenue Share / Reputed Builder Preferred"
+                      />
+                    </Field>
+                  )}
                 </div>
               </div>
             ) : profile.bhk ? (

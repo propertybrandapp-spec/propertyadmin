@@ -19,9 +19,12 @@ const KEYWORD_TYPES = { duplex: /\bduplex(es)?\b/i };
 export function matchesPropertyType(selectedTypes, p) {
   if (!selectedTypes || selectedTypes.length === 0) return true;
   const own = String(p.type ?? "").trim().toLowerCase();
+  const landUse = String(p.landUse ?? "").trim().toLowerCase();
   return selectedTypes.some((t) => {
     const want = String(t).trim().toLowerCase();
     if (own === want) return true;
+    if ((want === "agricultural land" || want === "farmhouse") && landUse === "agricultural") return true;
+    if (want === "plot" && (own === "residential plot" || own === "commercial plot" || own === "industrial plot")) return true;
     const re = KEYWORD_TYPES[want];
     if (!re) return false;
     return re.test([p.title, (p.tags || []).join(" "), p.description].filter(Boolean).join(" "));

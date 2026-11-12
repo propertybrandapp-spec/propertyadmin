@@ -139,3 +139,9 @@ Also run `supabase/migration_032_unit_sizes_handover_trend_contact.sql` — adds
 - **Private contact number**: Post Property now asks for a 10-digit number. It is stored in its own table, `listing_contacts`, readable only by the person who posted and by admins, and is shown in the admin Listings table ("Contact" column) and at the top of the edit form so you can call before approving. It is never part of the public listing data.
 
 Without this migration the site still works: sizes and handover are kept in the description text, the trend is not saved, and the contact number is not stored (the listing is still submitted).
+
+Also run `supabase/migration_033_jda_and_land_options.sql` (in propertybrand repository) — adds:
+- **Joint Development (JDA) Support**: allows land and plot listings to be flagged as open for JDA (`open_for_jda` boolean, `jda_terms` text). Displays a "🤝 JDA Partner" badge on listing cards and property detail, and links to the navbar's "Joint Development (JDA) Matching" search filter.
+- **Land Verification Badges**: title verified and zoning/CLU clearance status.
+- **Custom Possession & Land Use Options**: populates default entries in `listing_field_options` so admins can manage and add custom options from Site Content → Listing Options.
+- **Search Sync**: automatically matches listings where `land_use = 'Agricultural'` when searching for Farmland & Agricultural Land.

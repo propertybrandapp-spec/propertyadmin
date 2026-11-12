@@ -168,6 +168,10 @@ export function normalizeListing(row) {
     boundaryWall: !!row.boundary_wall,
     landUse: row.land_use || null,
     plotApproval: row.plot_approval || null,
+    openForJda: !!row.open_for_jda || (row.tags || []).some((t) => /jda|joint development/i.test(t)),
+    jdaTerms: row.jda_terms || null,
+    titleVerified: !!row.title_verified || (row.tags || []).some((t) => /title verified/i.test(t)),
+    zoningDone: !!row.zoning_conversion_done || (row.tags || []).some((t) => /zoning/i.test(t)),
 
     // ── Floor / tower structure ──
     floorNumber: row.floor_number != null ? row.floor_number : null,
@@ -403,7 +407,19 @@ function deriveFloorText(floorNumber, totalFloors) {
 // Plot-specific columns (migration_029). Sent for land listings, and for other
 // types only when the owner actually filled one in — so ordinary flat/villa
 // listings never depend on the migration.
-export const PLOT_COLUMNS_BASE = ["plot_length_ft", "plot_width_ft", "road_width_ft", "corner_plot", "boundary_wall", "land_use", "plot_approval"];
+export const PLOT_COLUMNS_BASE = [
+  "plot_length_ft",
+  "plot_width_ft",
+  "road_width_ft",
+  "corner_plot",
+  "boundary_wall",
+  "land_use",
+  "plot_approval",
+  "open_for_jda",
+  "jda_terms",
+  "title_verified",
+  "zoning_conversion_done",
+];
 
 // Plot columns (migration 029) + unit-size / handover / trend columns (migration 032).
 export const PLOT_COLUMNS = [...PLOT_COLUMNS_BASE, ...NEW_LISTING_COLUMNS];
@@ -422,6 +438,10 @@ function plotColumns(f) {
     boundary_wall: !!f.boundaryWall,
     land_use: f.landUse || null,
     plot_approval: f.plotApproval || null,
+    open_for_jda: !!f.openForJda,
+    jda_terms: f.openForJda ? (f.jdaTerms || null) : null,
+    title_verified: !!f.titleVerified,
+    zoning_conversion_done: !!f.zoningDone,
   };
   const anySet = Object.values(cols).some((v) => v !== null && v !== false);
   return isLandType(f.type) || anySet ? cols : {};
@@ -490,7 +510,12 @@ export function denormalizeListing(input) {
     facing: f.facing || null,
     age: f.age || null,
     description: f.description || null,
-    tags: f.tags || [],
+    tags: Array.from(new Set([
+      ...(Array.isArray(f.tags) ? f.tags : []),
+      ...(f.openForJda ? ["JDA", "Joint Development"] : []),
+      ...(f.titleVerified ? ["Title Verified"] : []),
+      ...(f.zoningDone ? ["Zoning Done"] : []),
+    ])),
     amenities: f.amenities || [],
     images: f.images || [],
     image_url: f.images && f.images[0] ? f.images[0] : null,

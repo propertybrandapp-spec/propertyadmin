@@ -8,6 +8,8 @@ import { supabase, safeQuery } from "./supabaseClient";
 export const FIELD_TYPES = [
   { id: "property_type", label: "Property Types" },
   { id: "bhk", label: "BHK Options" },
+  { id: "possession", label: "Possession Options" },
+  { id: "land_use", label: "Land Use Options" },
   { id: "amenity", label: "Amenities" },
   { id: "tag", label: "Tags" },
   { id: "budget_range", label: "Budget Ranges" },
@@ -66,8 +68,15 @@ export async function fetchActiveListingFieldOptionsGrouped() {
   );
   if (error || !data || data.length === 0) return { data: null, error };
 
-  const grouped = { propertyTypes: [], bhkOptions: [], amenities: [], tags: [] };
-  const keyByFieldType = { property_type: "propertyTypes", bhk: "bhkOptions", amenity: "amenities", tag: "tags" };
+  const grouped = { propertyTypes: [], bhkOptions: [], amenities: [], tags: [], possessionOptions: [], landUseOptions: [] };
+  const keyByFieldType = {
+    property_type: "propertyTypes",
+    bhk: "bhkOptions",
+    possession: "possessionOptions",
+    land_use: "landUseOptions",
+    amenity: "amenities",
+    tag: "tags",
+  };
   data.forEach((row) => {
     const key = keyByFieldType[row.field_type];
     if (key) grouped[key].push(row.value);

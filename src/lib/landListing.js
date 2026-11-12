@@ -53,6 +53,8 @@ export const PLOT_APPROVAL_OPTIONS = ["Development Authority Approved", "RERA Ap
 export const PLOT_ROAD_OPTIONS = ["Tar / Pucca Road", "Cement Road", "Kaccha Road", "Under Development"];
 export const LAND_PHOTO_LABELS = ["Plot View", "Road / Approach", "Boundary", "Surroundings", "Layout Map", "Other"];
 
+export const DEFAULT_LAND_USE_OPTIONS = LAND_USE_OPTIONS;
+
 // Fields that only make sense for a building — cleared when a land listing is saved
 // so a type switch half-way through the form can't leave stray "3 BHK" behind.
 const BUILDING_ONLY_FIELDS = {
@@ -105,5 +107,8 @@ export function plotDetailsSummary(p) {
   if (p.boundaryWall) parts.push("Boundary wall built");
   if (p.landUse) parts.push(`Land use: ${p.landUse}`);
   if (p.plotApproval) parts.push(`Approval: ${p.plotApproval}`);
+  if (p.openForJda) parts.push(p.jdaTerms ? `Open for JDA (${p.jdaTerms})` : "Open for JDA");
+  if (p.titleVerified) parts.push("Title Verified");
+  if (p.zoningDone) parts.push("Zoning Done");
   return parts.join(" · ");
 }
