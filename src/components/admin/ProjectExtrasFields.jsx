@@ -20,7 +20,7 @@ function Label({ children, hint }) {
   );
 }
 
-function RowList({ rows, onChange, columns, addLabel, empty, max = 12 }) {
+function RowList({ rows, onChange, columns, addLabel, empty, max = 12, datalistId }) {
   const update = (i, key, value) => onChange(rows.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)));
   return (
     <div className="space-y-2">
@@ -30,7 +30,8 @@ function RowList({ rows, onChange, columns, addLabel, empty, max = 12 }) {
           {columns.map((c) => (
             <input key={c.key} value={row[c.key] ?? ""} inputMode={c.numeric ? "numeric" : undefined}
               onChange={(e) => update(i, c.key, c.numeric ? e.target.value.replace(/[^\d.,]/g, "") : e.target.value)}
-              placeholder={c.placeholder} aria-label={`${c.label} ${i + 1}`} className={input} style={inputStyle} />
+              placeholder={c.placeholder} aria-label={`${c.label} ${i + 1}`} className={input} style={inputStyle}
+              list={c.key === "label" && datalistId ? datalistId : undefined} />
           ))}
           <button type="button" onClick={() => onChange(rows.filter((_, idx) => idx !== i))} aria-label={`Remove row ${i + 1}`}
             className="text-base font-bold" style={{ color: "#DC2626" }}>×</button>
@@ -47,6 +48,26 @@ function RowList({ rows, onChange, columns, addLabel, empty, max = 12 }) {
 }
 
 export default function ProjectExtrasFields({ form, set, isLand = false, hasBhk = true }) {
+  const [showCustomSize, setShowCustomSize] = React.useState(false);
+  const [customSizeDraft, setCustomSizeDraft] = React.useState("");
+
+  const sizePresets = isLand
+    ? ["30×40 plot", "30×50 plot", "40×60 plot", "50×80 plot"]
+    : Array.from(new Set([...(Array.isArray(form.bhk) && form.bhk.length ? form.bhk : ["1 BHK", "2 BHK", "3 BHK", "4 BHK", "5 BHK"])]));
+
+  const allDatalistOptions = isLand
+    ? ["30×40 plot", "30×50 plot", "40×60 plot", "50×80 plot", "1 Acre plot", "2 Acre parcel"]
+    : ["1 RK", "1 BHK", "1.5 BHK", "2 BHK", "2.5 BHK", "3 BHK", "3.5 BHK", "4 BHK", "5 BHK", "Studio", "Duplex", "Penthouse"];
+
+  function handleAddCustomSize() {
+    const val = customSizeDraft.trim();
+    if (!val) return;
+    const formatted = /^\d+(\.\d+)?$/.test(val) ? `${val} BHK` : val;
+    set("unitConfigs", [...(form.unitConfigs || []), { label: formatted, areaSqft: "", price: "" }]);
+    setCustomSizeDraft("");
+    setShowCustomSize(false);
+  }
+
   return (
     <div className="rounded-2xl p-6 space-y-6" style={card} data-testid="project-extras">
       <div>
@@ -58,8 +79,75 @@ export default function ProjectExtrasFields({ form, set, isLand = false, hasBhk 
         <Label hint={isLand ? "One row per plot size, e.g. 30×40 plot · 1,200 sqft · ₹24,00,000." : hasBhk ? "One row per size in this project, e.g. 2 BHK · 1,050 sqft · ₹62,00,000." : "One row per size on offer, e.g. Unit A · 1,200 sqft · ₹85,00,000."}>
           Sizes available in this project
         </Label>
+
+        {/* Quick Add Size Chips & Custom Size Button */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          <span className="text-[11px] font-semibold text-slate-500 mr-1">Quick add:</span>
+          {sizePresets.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => {
+                set("unitConfigs", [...(form.unitConfigs || []), { label: preset, areaSqft: "", price: "" }]);
+              }}
+              className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 transition-colors"
+            >
+              + {preset}
+            </button>
+          ))}
+          {showCustomSize ? (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-blue-400 bg-blue-50/60">
+              <input
+                type="text"
+                value={customSizeDraft}
+                onChange={(e) => setCustomSizeDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddCustomSize();
+                  } else if (e.key === "Escape") {
+                    setShowCustomSize(false);
+                  }
+                }}
+                placeholder={isLand ? "e.g. 60×80 plot" : "e.g. 2.5 BHK, Penthouse"}
+                className="text-xs bg-transparent outline-none w-36 text-slate-800 font-semibold placeholder:text-slate-400"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomSize}
+                className="text-xs font-bold text-blue-700 hover:text-blue-900 px-1 py-0.5 rounded"
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowCustomSize(false); setCustomSizeDraft(""); }}
+                className="text-xs text-slate-400 hover:text-slate-600 px-0.5"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowCustomSize(true)}
+              className="text-xs font-semibold px-2.5 py-1 rounded-full border border-dashed border-blue-400 text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <span className="text-sm font-bold leading-none">+</span> Custom Size
+            </button>
+          )}
+        </div>
+
+        <datalist id="size-label-presets">
+          {allDatalistOptions.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
+
         <RowList
           rows={form.unitConfigs || []} onChange={(v) => set("unitConfigs", v)} addLabel="Add a size" empty="Only one size? Skip this — the details above are enough."
+          datalistId="size-label-presets"
           columns={[
             { key: "label", label: "Size name", placeholder: isLand ? "e.g. 30×40 plot" : hasBhk ? "e.g. 3 BHK" : "e.g. Unit A" },
             { key: "areaSqft", label: "Area (sq ft)", placeholder: "Area (sq ft)", numeric: true },

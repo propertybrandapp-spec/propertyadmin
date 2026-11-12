@@ -333,6 +333,68 @@ function Select({ children, ...props }) {
   return <select {...props} className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2" style={inputStyle}>{children}</select>;
 }
 
+function CustomizableSelect({ value, onChange, options = [], placeholder = "— Select —", addLabel = "+ Add Custom...", inputPlaceholder = "Enter custom..." }) {
+  const [isCustom, setIsCustom] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [customList, setCustomList] = useState([]);
+
+  const allOpts = Array.from(new Set([...options, ...customList, ...(value && !options.includes(value) ? [value] : [])]));
+
+  if (isCustom) {
+    return (
+      <div className="flex gap-2">
+        <TextInput
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={inputPlaceholder}
+          autoFocus
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const val = draft.trim();
+            if (val) {
+              setCustomList((prev) => [...prev, val]);
+              onChange(val);
+            }
+            setIsCustom(false);
+            setDraft("");
+          }}
+          className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0"
+        >
+          Add
+        </button>
+        <button
+          type="button"
+          onClick={() => { setIsCustom(false); setDraft(""); }}
+          className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <Select
+      value={value}
+      onChange={(e) => {
+        if (e.target.value === "__custom__") {
+          setIsCustom(true);
+        } else {
+          onChange(e.target.value);
+        }
+      }}
+    >
+      {placeholder && <option value="">{placeholder}</option>}
+      {allOpts.map((o) => (
+        <option key={o} value={o}>{o}</option>
+      ))}
+      <option value="__custom__">{addLabel}</option>
+    </Select>
+  );
+}
+
 function Chip({ label, active, onClick }) {
   return (
     <button type="button" onClick={onClick}
@@ -1638,21 +1700,34 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Facing">
-              <Select value={form.facing} onChange={(e) => set("facing", e.target.value)}>
-                <option value="">— N/A —</option>
-                {FACING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-              </Select>
+              <CustomizableSelect
+                value={form.facing}
+                onChange={(val) => set("facing", val)}
+                options={FACING_OPTIONS}
+                placeholder="— N/A —"
+                addLabel="+ Add Custom Facing..."
+                inputPlaceholder="e.g. North-North-East"
+              />
             </Field>
             <Field label="Entrance Direction">
-              <Select value={form.entranceDirection} onChange={(e) => set("entranceDirection", e.target.value)}>
-                <option value="">— N/A —</option>
-                {FACING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-              </Select>
+              <CustomizableSelect
+                value={form.entranceDirection}
+                onChange={(val) => set("entranceDirection", val)}
+                options={FACING_OPTIONS}
+                placeholder="— N/A —"
+                addLabel="+ Add Custom Direction..."
+                inputPlaceholder="e.g. North-East"
+              />
             </Field>
             <Field label="Vastu Status">
-              <Select value={form.vastuStatus} onChange={(e) => set("vastuStatus", e.target.value)}>
-                {VASTU_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
-              </Select>
+              <CustomizableSelect
+                value={form.vastuStatus}
+                onChange={(val) => set("vastuStatus", val)}
+                options={VASTU_OPTIONS}
+                placeholder=""
+                addLabel="+ Add Custom Vastu..."
+                inputPlaceholder="e.g. Partially Compliant"
+              />
             </Field>
           </div>
 
@@ -1660,18 +1735,26 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {profile.furnishing && (
                 <Field label="Furnishing">
-                  <Select value={form.furnishing} onChange={(e) => set("furnishing", e.target.value)}>
-                    <option value="">— N/A —</option>
-                    {FURNISHING_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-                  </Select>
+                  <CustomizableSelect
+                    value={form.furnishing}
+                    onChange={(val) => set("furnishing", val)}
+                    options={FURNISHING_OPTIONS}
+                    placeholder="— N/A —"
+                    addLabel="+ Add Custom Furnishing..."
+                    inputPlaceholder="e.g. Semi-Furnished with White Goods"
+                  />
                 </Field>
               )}
               {profile.condition && (
                 <Field label="Condition">
-                  <Select value={form.condition} onChange={(e) => set("condition", e.target.value)}>
-                    <option value="">— N/A —</option>
-                    {CONDITION_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </Select>
+                  <CustomizableSelect
+                    value={form.condition}
+                    onChange={(val) => set("condition", val)}
+                    options={CONDITION_OPTIONS}
+                    placeholder="— N/A —"
+                    addLabel="+ Add Custom Condition..."
+                    inputPlaceholder="e.g. Under Remodeling"
+                  />
                 </Field>
               )}
               {profile.age && (
