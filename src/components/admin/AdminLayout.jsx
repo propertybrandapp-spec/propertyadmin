@@ -94,7 +94,7 @@ function Sidebar({ activePage, onNavigate, collapsed, setCollapsed, mobileOpen, 
             <span className="flex items-center gap-2">
               <img src="/logo-icon.webp" alt="PropertyBrands" className="w-8 h-8 rounded-full object-cover" />
               <span className="font-extrabold text-lg tracking-tight" style={{ color: "#1F2937" }}>
-                property<span style={{ color: "#1565C0" }}>Brands</span>
+                Property<span style={{ color: "#1565C0" }}>Brands</span>
               </span>
             </span>
           )}
