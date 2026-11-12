@@ -340,34 +340,46 @@ function CustomizableSelect({ value, onChange, options = [], placeholder = "— 
 
   const allOpts = Array.from(new Set([...options, ...customList, ...(value && !options.includes(value) ? [value] : [])]));
 
+  function commitCustom() {
+    const val = draft.trim();
+    if (val) {
+      setCustomList((prev) => (prev.includes(val) ? prev : [...prev, val]));
+      onChange(val);
+    }
+    setIsCustom(false);
+    setDraft("");
+  }
+
   if (isCustom) {
     return (
       <div className="flex gap-2">
         <TextInput
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitCustom();
+            } else if (e.key === "Escape") {
+              setIsCustom(false);
+              setDraft("");
+            }
+          }}
           placeholder={inputPlaceholder}
           autoFocus
         />
         <button
           type="button"
-          onClick={() => {
-            const val = draft.trim();
-            if (val) {
-              setCustomList((prev) => [...prev, val]);
-              onChange(val);
-            }
-            setIsCustom(false);
-            setDraft("");
-          }}
-          className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0"
+          onClick={commitCustom}
+          className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0 hover:bg-[#0D47A1]"
         >
           Add
         </button>
         <button
           type="button"
           onClick={() => { setIsCustom(false); setDraft(""); }}
-          className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0"
+          className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0 hover:bg-slate-200"
+          title="Cancel"
         >
           ✕
         </button>
@@ -377,7 +389,7 @@ function CustomizableSelect({ value, onChange, options = [], placeholder = "— 
 
   return (
     <Select
-      value={value}
+      value={value || ""}
       onChange={(e) => {
         if (e.target.value === "__custom__") {
           setIsCustom(true);
@@ -626,22 +638,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   const [showCustomBhk, setShowCustomBhk] = useState(false);
   const [customBhkDraft, setCustomBhkDraft] = useState("");
 
-  const [customPossessionList, setCustomPossessionList] = useState([]);
-  const [showCustomPossession, setShowCustomPossession] = useState(false);
-  const [customPossessionDraft, setCustomPossessionDraft] = useState("");
-
-  const [customTypeList, setCustomTypeList] = useState([]);
-  const [showCustomType, setShowCustomType] = useState(false);
-  const [customTypeDraft, setCustomTypeDraft] = useState("");
-
-  const [customLandUseList, setCustomLandUseList] = useState([]);
-  const [showCustomLandUse, setShowCustomLandUse] = useState(false);
-  const [customLandUseDraft, setCustomLandUseDraft] = useState("");
-
   const allBhkOptions = Array.from(new Set([...BHK_OPTIONS, ...customBhkList, ...(Array.isArray(form.bhk) ? form.bhk : [])]));
-  const allPropertyTypes = Array.from(new Set([...PROPERTY_TYPES, ...customTypeList, ...(form.type ? [form.type] : [])]));
-  const allPossessionOptions = Array.from(new Set([...POSSESSION_OPTIONS, ...customPossessionList, ...(form.status ? [form.status] : [])]));
-  const allLandUseOptions = Array.from(new Set([...LAND_USE_OPTIONS, ...customLandUseList, ...(form.landUse ? [form.landUse] : [])]));
 
   function handleAddCustomBhk() {
     const val = customBhkDraft.trim();
@@ -1218,105 +1215,30 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </Select>
             </Field>
             <Field label="Property Type">
-              {showCustomType ? (
-                <div className="flex gap-2">
-                  <TextInput
-                    value={customTypeDraft}
-                    onChange={(e) => setCustomTypeDraft(e.target.value)}
-                    placeholder="e.g. Row House / Penthouse"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const val = customTypeDraft.trim();
-                      if (val) {
-                        setCustomTypeList((prev) => [...prev, val]);
-                        set("type", val);
-                      }
-                      setShowCustomType(false);
-                      setCustomTypeDraft("");
-                    }}
-                    className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowCustomType(false); setCustomTypeDraft(""); }}
-                    className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <Select
-                  value={form.type}
-                  onChange={(e) => {
-                    if (e.target.value === "__custom__") {
-                      setShowCustomType(true);
-                    } else {
-                      const t = e.target.value;
-                      setForm((f) => ({
-                        ...f,
-                        type: t,
-                        ...((t === "Agricultural Land" || t === "Farmhouse") && !f.landUse ? { landUse: "Agricultural" } : {})
-                      }));
-                    }
-                  }}
-                >
-                  {allPropertyTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-                  <option value="__custom__">+ Add Custom Type...</option>
-                </Select>
-              )}
+              <CustomizableSelect
+                value={form.type}
+                onChange={(val) => {
+                  setForm((f) => ({
+                    ...f,
+                    type: val,
+                    ...((val === "Agricultural Land" || val === "Farmhouse") && !f.landUse ? { landUse: "Agricultural" } : {})
+                  }));
+                }}
+                options={PROPERTY_TYPES}
+                placeholder=""
+                addLabel="+ Add Custom Type..."
+                inputPlaceholder="e.g. Row House / Penthouse"
+              />
             </Field>
             <Field label="Possession">
-              {showCustomPossession ? (
-                <div className="flex gap-2">
-                  <TextInput
-                    value={customPossessionDraft}
-                    onChange={(e) => setCustomPossessionDraft(e.target.value)}
-                    placeholder="e.g. Immediate / Ready Dec 2026"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const val = customPossessionDraft.trim();
-                      if (val) {
-                        setCustomPossessionList((prev) => [...prev, val]);
-                        set("status", val);
-                      }
-                      setShowCustomPossession(false);
-                      setCustomPossessionDraft("");
-                    }}
-                    className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowCustomPossession(false); setCustomPossessionDraft(""); }}
-                    className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <Select
-                  value={form.status}
-                  onChange={(e) => {
-                    if (e.target.value === "__custom__") {
-                      setShowCustomPossession(true);
-                    } else {
-                      set("status", e.target.value);
-                    }
-                  }}
-                >
-                  {allPossessionOptions.map((p) => <option key={p} value={p}>{p}</option>)}
-                  <option value="__custom__">+ Add Custom...</option>
-                </Select>
-              )}
+              <CustomizableSelect
+                value={form.status}
+                onChange={(val) => set("status", val)}
+                options={POSSESSION_OPTIONS}
+                placeholder=""
+                addLabel="+ Add Custom Possession..."
+                inputPlaceholder="e.g. Immediate / Ready Dec 2026"
+              />
             </Field>
           </div>
 
@@ -1352,59 +1274,24 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="Land Use">
-                    {showCustomLandUse ? (
-                      <div className="flex gap-2">
-                        <TextInput
-                          value={customLandUseDraft}
-                          onChange={(e) => setCustomLandUseDraft(e.target.value)}
-                          placeholder="e.g. Farmhouse Zoning"
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const val = customLandUseDraft.trim();
-                            if (val) {
-                              setCustomLandUseList((prev) => [...prev, val]);
-                              set("landUse", val);
-                            }
-                            setShowCustomLandUse(false);
-                            setCustomLandUseDraft("");
-                          }}
-                          className="px-3 py-2 text-xs font-bold rounded-xl text-white bg-[#1565C0] shrink-0"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setShowCustomLandUse(false); setCustomLandUseDraft(""); }}
-                          className="px-2.5 py-2 text-xs font-semibold rounded-xl text-slate-600 bg-slate-100 shrink-0"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <Select
-                        value={form.landUse}
-                        onChange={(e) => {
-                          if (e.target.value === "__custom__") {
-                            setShowCustomLandUse(true);
-                          } else {
-                            set("landUse", e.target.value);
-                          }
-                        }}
-                      >
-                        <option value="">— Select —</option>
-                        {allLandUseOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-                        <option value="__custom__">+ Add Custom Land Use...</option>
-                      </Select>
-                    )}
+                    <CustomizableSelect
+                      value={form.landUse}
+                      onChange={(val) => set("landUse", val)}
+                      options={LAND_USE_OPTIONS}
+                      placeholder="— Select —"
+                      addLabel="+ Add Custom Land Use..."
+                      inputPlaceholder="e.g. Farmhouse Zoning"
+                    />
                   </Field>
                   <Field label="Approval / Layout">
-                    <Select value={form.plotApproval} onChange={(e) => set("plotApproval", e.target.value)}>
-                      <option value="">— Select —</option>
-                      {PLOT_APPROVAL_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </Select>
+                    <CustomizableSelect
+                      value={form.plotApproval}
+                      onChange={(val) => set("plotApproval", val)}
+                      options={PLOT_APPROVAL_OPTIONS}
+                      placeholder="— Select —"
+                      addLabel="+ Add Custom Approval..."
+                      inputPlaceholder="e.g. BDA Approved / Gram Panchayat"
+                    />
                   </Field>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-2">
@@ -2241,10 +2128,14 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </Select>
             </Field>
             <Field label="Ownership Type">
-              <Select value={form.ownershipType} onChange={(e) => set("ownershipType", e.target.value)}>
-                <option value="">— N/A —</option>
-                {OWNERSHIP_TYPE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-              </Select>
+              <CustomizableSelect
+                value={form.ownershipType}
+                onChange={(val) => set("ownershipType", val)}
+                options={OWNERSHIP_TYPE_OPTIONS}
+                placeholder="— N/A —"
+                addLabel="+ Add Custom Ownership..."
+                inputPlaceholder="e.g. Freehold / Patta"
+              />
             </Field>
             <Field label="Title Status">
               <Select value={form.titleStatus} onChange={(e) => set("titleStatus", e.target.value)}>
