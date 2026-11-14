@@ -617,8 +617,9 @@ function ReviewsPanel() {
   const [items, setItems] = useState(null);
   const [editing, setEditing] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
+  const [filter, setFilter] = useState("all"); // 'all' | 'pending' | 'live'
 
-  function load() { fetchAdminClientReviews().then(({ data }) => setItems(data)); }
+  function load() { fetchAdminClientReviews().then(({ data }) => setItems(data || [])); }
   useEffect(load, []);
 
   async function toggleActive(r) { await updateClientReview(r.dbId, { ...r, active: !r.active }); load(); }
@@ -626,28 +627,128 @@ function ReviewsPanel() {
 
   if (items === null) return <EmptyState label="Loading..." />;
 
+  const pendingCount = items.filter((r) => !r.active).length;
+  const liveCount = items.filter((r) => r.active).length;
+
+  const displayedItems = items.filter((r) => {
+    if (filter === "pending") return !r.active;
+    if (filter === "live") return r.active;
+    return true;
+  });
+
   return (
     <div className="space-y-4">
-      {editing ? (
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+              filter === "all" ? "bg-[#1565C0] text-white border-[#1565C0]" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            All Reviews ({items.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("pending")}
+            className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-1.5 transition cursor-pointer ${
+              filter === "pending"
+                ? "bg-amber-600 text-white border-amber-600"
+                : pendingCount > 0
+                ? "bg-amber-50 text-amber-800 border-amber-300 font-extrabold"
+                : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <span>⏳ Pending Approval</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${filter === "pending" ? "bg-white/30 text-white" : "bg-amber-200 text-amber-900"}`}>
+              {pendingCount}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("live")}
+            className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+              filter === "live" ? "bg-[#1565C0] text-white border-[#1565C0]" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            Live on Site ({liveCount})
+          </button>
+        </div>
+
+        {editing ? null : (
+          <button onClick={() => setEditing(EMPTY_REVIEW)} className="text-sm font-bold px-4 py-2.5 rounded-xl cursor-pointer" style={{ background: "#1565C0", color: "#FFFFFF" }}>
+            + Add Review
+          </button>
+        )}
+      </div>
+
+      {editing && (
         <ReviewForm initial={editing.dbId ? editing : EMPTY_REVIEW} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
-      ) : (
-        <button onClick={() => setEditing(EMPTY_REVIEW)} className="text-sm font-bold px-4 py-2.5 rounded-xl" style={{ background: "#1565C0", color: "#FFFFFF" }}>+ Add Review</button>
       )}
-      {items.length === 0 && !editing && <EmptyState label="No client reviews yet — add one above. The public Reviews page shows built-in demo reviews until you do." />}
-      {items.map((r) => (
+
+      {displayedItems.length === 0 && !editing && (
+        <EmptyState
+          label={
+            filter === "pending"
+              ? "No reviews pending approval. All submitted reviews are live!"
+              : filter === "live"
+              ? "No live reviews yet — approve a pending review or add one above."
+              : "No client reviews yet — add one above. The public Reviews page shows built-in demo reviews until you do."
+          }
+        />
+      )}
+
+      {displayedItems.map((r) => (
         <Card key={r.id}>
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <p className="text-sm font-bold" style={{ color: "#1F2937" }}>{r.name}</p>
                 <span className="text-xs" style={{ color: "#F59E0B" }}>{"★".repeat(r.rating)}</span>
-                <ActivePill active={r.active} />
+                {r.active ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    🟢 Live on Site
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                    ⏳ Pending Approval
+                  </span>
+                )}
+                {r.category && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {r.category}
+                  </span>
+                )}
               </div>
-              <p className="text-xs mb-1" style={{ color: "#6B7280" }}>{r.role} · {r.location}</p>
-              <p className="text-xs truncate max-w-lg" style={{ color: "#6B7280" }}>{r.text}</p>
+              <p className="text-xs mb-1" style={{ color: "#6B7280" }}>
+                {[r.role, r.location, r.property].filter(Boolean).join(" · ")}
+              </p>
+              <p className="text-xs leading-relaxed text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100 mt-1.5">
+                &ldquo;{r.text}&rdquo;
+              </p>
             </div>
-            <RowActions active={r.active} onEdit={() => setEditing(r)} onToggle={() => toggleActive(r)}
-              onDelete={() => handleDelete(r.dbId)} confirming={confirmId === r.id} setConfirming={(v) => setConfirmId(v ? r.id : null)} />
+
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              {!r.active && (
+                <button
+                  type="button"
+                  onClick={() => toggleActive(r)}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1 cursor-pointer transition"
+                >
+                  ✓ Approve &amp; Publish
+                </button>
+              )}
+              <RowActions
+                active={r.active}
+                onEdit={() => setEditing(r)}
+                onToggle={() => toggleActive(r)}
+                onDelete={() => handleDelete(r.dbId)}
+                confirming={confirmId === r.id}
+                setConfirming={(v) => setConfirmId(v ? r.id : null)}
+              />
+            </div>
           </div>
         </Card>
       ))}
