@@ -138,7 +138,14 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
 
   async function load() {
     setLoading(true);
-    const { data, error } = await fetchAdminListings();
+    let hasLoadedFirstBatch = false;
+    const { data, error } = await fetchAdminListings((partial) => {
+      if (!hasLoadedFirstBatch && partial && partial.length > 0) {
+        hasLoadedFirstBatch = true;
+        setListings(partial);
+        setLoading(false);
+      }
+    });
     // Posters' private contact and identity details (separate table; admin-only)
     const contacts = await fetchListingContacts((data || []).map((l) => l.dbId));
     setListings(

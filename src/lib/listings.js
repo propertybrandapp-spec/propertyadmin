@@ -759,7 +759,7 @@ function normalizeRows(rows) {
   return out;
 }
 
-async function fetchAllListings(buildQuery) {
+async function fetchAllListings(buildQuery, onProgress) {
   const rows = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await safeQuery(buildQuery().range(from, from + PAGE_SIZE - 1));
@@ -768,23 +768,34 @@ async function fetchAllListings(buildQuery) {
       return { data: normalizeRows(rows), error: rows.length ? null : error };
     }
     rows.push(...(data || []));
+    if (onProgress && rows.length > 0) {
+      try {
+        onProgress(normalizeRows(rows));
+      } catch {
+        /* ignore */
+      }
+    }
     if (!data || data.length < PAGE_SIZE) break;
   }
   return { data: normalizeRows(rows), error: null };
 }
 
-export async function fetchPublicListings() {
-  return fetchAllListings(() =>
-    supabase.from("listings").select(LISTING_BULK_SELECT).eq("status", "Live")
-      .order("created_at", { ascending: false })
+export async function fetchPublicListings(onProgress) {
+  return fetchAllListings(
+    () =>
+      supabase.from("listings").select(LISTING_BULK_SELECT).eq("status", "Live")
+        .order("created_at", { ascending: false }),
+    onProgress
   );
 }
 
 // ── Admin console: sees every listing regardless of moderation status ───────
-export async function fetchAdminListings() {
-  return fetchAllListings(() =>
-    supabase.from("listings").select(LISTING_BULK_SELECT)
-      .order("created_at", { ascending: false })
+export async function fetchAdminListings(onProgress) {
+  return fetchAllListings(
+    () =>
+      supabase.from("listings").select(LISTING_BULK_SELECT)
+        .order("created_at", { ascending: false }),
+    onProgress
   );
 }
 
