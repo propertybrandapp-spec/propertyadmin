@@ -740,12 +740,12 @@ function daysAgo(isoDate) {
 
 // Detail query: pulls in linked developer/project/agent profile for single property view
 const LISTING_SELECT = "*, developer:developers(*), project:projects(*), agent:agents(*)";
-// Bulk list query: selects listing columns directly without 3-way nested joins, keeping responses fast and preventing timeouts
-const LISTING_BULK_SELECT = "*";
+// Bulk list query: selects all essential listing columns directly without slow nested joins or huge unused fields, preventing timeouts
+const LISTING_BULK_SELECT = "id, title, price_label, price_value, price_on_request, location, city, locality, landmark, pincode, property_type, bhk, area_sqft, images, image_url, posted_by, verified, featured, badge, badge_color, created_at, updated_at, tags, amenities, transaction_type, listing_type, possession, views, bathrooms, balconies, furnishing, property_condition, facing, floor, floor_number, total_floors, rera_status, video_urls, location_video_url, ideal_for, investment_corridor, google_maps_link, latitude, longitude, unit_configurations, handover_date, handover_timeline, price_trend";
 
 // ── Public site: only ever see moderation-approved ("Live") listings ────────
-// Fetch in compact pages of 50 so queries resolve fast under statement limits.
-const PAGE_SIZE = 50;
+// Fetch in compact pages of 80 so queries resolve fast under statement limits.
+const PAGE_SIZE = 80;
 
 function normalizeRows(rows) {
   const out = [];
