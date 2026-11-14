@@ -291,6 +291,7 @@ const EMPTY_FORM = {
   posterName: "",
   posterPhone: "",
   posterEmail: "",
+  posterAddress: "",
   posterPhotoUrl: "",
   posterPreferredContactMethods: [],
   posterAvailabilityNotes: "",
@@ -591,6 +592,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       posterName: nullToEmpty(editingListing.posterName),
       posterPhone: nullToEmpty(editingListing.posterPhone),
       posterEmail: nullToEmpty(editingListing.posterEmail),
+      posterAddress: nullToEmpty(editingListing.posterAddress),
       posterPhotoUrl: nullToEmpty(editingListing.posterPhotoUrl),
       posterPreferredContactMethods: Array.isArray(editingListing.posterPreferredContactMethods) ? editingListing.posterPreferredContactMethods : [],
       posterAvailabilityNotes: nullToEmpty(editingListing.posterAvailabilityNotes),
@@ -2345,6 +2347,10 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                   <TextInput value={form.posterEmail} onChange={(e) => set("posterEmail", e.target.value)} placeholder="e.g. rajesh@example.com" />
                 </Field>
               </div>
+
+              <Field label="Poster Residential / Office Address" hint="Private address provided during submission for owner identification.">
+                <TextInput value={form.posterAddress} onChange={(e) => set("posterAddress", e.target.value)} placeholder="e.g. Flat 402, Royal Residency, Patia, Bhubaneswar - 751024" />
+              </Field>
 
               <Field label="Preferred Contact Methods">
                 <div className="flex flex-wrap gap-2">

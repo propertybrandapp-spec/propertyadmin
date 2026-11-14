@@ -302,6 +302,7 @@ export function normalizeListing(row) {
     posterName: row.poster_name || null,
     posterPhone: row.poster_phone || null,
     posterEmail: row.poster_email || null,
+    posterAddress: row.poster_address || null,
     posterPhotoUrl: row.poster_photo_url || null,
     posterPreferredContactMethods: row.poster_preferred_contact_methods || [],
     posterAvailabilityNotes: row.poster_availability_notes || null,
@@ -646,6 +647,7 @@ export function denormalizeListing(input) {
     poster_name: f.posterName || null,
     poster_phone: f.posterPhone || null,
     poster_email: f.posterEmail || null,
+    poster_address: f.posterAddress || null,
     poster_photo_url: f.posterPhotoUrl || null,
     poster_preferred_contact_methods: Array.isArray(f.posterPreferredContactMethods) ? f.posterPreferredContactMethods : [],
     poster_availability_notes: f.posterAvailabilityNotes || null,
@@ -822,24 +824,39 @@ export async function createListing(property) {
     ({ data, error } = await safeQuery(supabase.from("listings").insert(withoutPlotColumns(payload, property)).select(LISTING_SELECT).single()));
   }
   if (error) return { data: null, error };
-  // The poster's phone number lives in its own private table (see migration 032).
+  // The poster's private contact and identity details (see migration 032 & 036).
   let contactSaved = true;
-  const phone = String(property.contactPhone || "").replace(/\D/g, "").slice(-10);
-  if (phone) {
+  const phone = String(property.contactPhone || property.posterPhone || "").replace(/\D/g, "").slice(-10);
+  if (data?.id && (phone || property.posterName)) {
+    const contactPayload = {
+      listing_id: data.id,
+      phone: phone || "",
+      name: property.posterName || null,
+      email: property.posterEmail || null,
+      address: property.posterAddress || null,
+      posted_by_user_id: payload.posted_by_user_id || null,
+    };
     const { error: cErr } = await safeQuery(
-      supabase.from("listing_contacts").insert({ listing_id: data.id, phone, posted_by_user_id: payload.posted_by_user_id || null })
+      supabase.from("listing_contacts").upsert(contactPayload, { onConflict: "listing_id" })
     );
-    if (cErr) { contactSaved = false; console.warn("Couldn't save contact number:", cErr.message); }
+    if (cErr) { contactSaved = false; console.warn("Couldn't save contact details:", cErr.message); }
   }
   return { data: normalizeListing(data), error: null, contactSaved };
 }
 
-// Admin approval screen: the poster's number for each listing (id -> phone).
+// Admin approval screen: the poster's private details for each listing (id -> details).
 export async function fetchListingContacts(ids) {
   if (!ids || ids.length === 0) return {};
-  const { data } = await safeQuery(supabase.from("listing_contacts").select("listing_id, phone").in("listing_id", ids.slice(0, 500)));
+  const { data } = await safeQuery(supabase.from("listing_contacts").select("listing_id, phone, name, email, address").in("listing_id", ids.slice(0, 500)));
   const map = {};
-  (data || []).forEach((r) => { map[r.listing_id] = r.phone; });
+  (data || []).forEach((r) => {
+    map[r.listing_id] = {
+      phone: r.phone,
+      name: r.name,
+      email: r.email,
+      address: r.address,
+    };
+  });
   return map;
 }
 

@@ -139,9 +139,24 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
   async function load() {
     setLoading(true);
     const { data, error } = await fetchAdminListings();
-    // Posters' private phone numbers (separate table; admin-only) so they can be called when approving.
+    // Posters' private contact and identity details (separate table; admin-only)
     const contacts = await fetchListingContacts((data || []).map((l) => l.dbId));
-    setListings((data || []).map((l) => ({ ...l, contactPhone: contacts[l.dbId] || null })));
+    setListings(
+      (data || []).map((l) => {
+        const c = contacts[l.dbId];
+        const phone = typeof c === "object" ? c?.phone : c;
+        const name = (typeof c === "object" ? c?.name : null) || l.posterName;
+        const email = (typeof c === "object" ? c?.email : null) || l.posterEmail;
+        const address = (typeof c === "object" ? c?.address : null) || l.posterAddress;
+        return {
+          ...l,
+          contactPhone: phone || l.posterPhone || null,
+          contactName: name || null,
+          contactEmail: email || null,
+          contactAddress: address || null,
+        };
+      })
+    );
     setErrorMsg(error ? (error.message || "Couldn't load listings — check your Supabase connection (see SETUP.md).") : "");
     setLoading(false);
   }
@@ -393,10 +408,17 @@ export default function AdminListings({ onNavigate, onLogout, adminProfile }) {
                       <td className="px-3 py-3.5 hidden md:table-cell" style={{ color: "#6B7280" }}>{listing.type}</td>
                       <td className="px-3 py-3.5 font-bold" style={{ color: "#1F2937" }}>{listing.price}</td>
                       <td className="px-3 py-3.5 hidden lg:table-cell" style={{ color: "#6B7280" }}>{listing.postedBy}</td>
-                      <td className="px-3 py-3.5 whitespace-nowrap">
-                        {listing.contactPhone
-                          ? <a href={`tel:${listing.contactPhone}`} className="font-semibold text-xs" style={{ color: "#1565C0" }}>{listing.contactPhone}</a>
-                          : <span className="text-xs" style={{ color: "#9CA3AF" }}>—</span>}
+                      <td className="px-3 py-3.5">
+                        {listing.contactPhone || listing.contactName ? (
+                          <div className="text-xs space-y-0.5">
+                            {listing.contactName && <p className="font-bold text-slate-800 truncate max-w-[150px]">{listing.contactName}</p>}
+                            {listing.contactPhone && <a href={`tel:${listing.contactPhone}`} className="font-semibold text-[#1565C0] block">{listing.contactPhone}</a>}
+                            {listing.contactEmail && <p className="text-[10px] text-slate-500 truncate max-w-[150px]">{listing.contactEmail}</p>}
+                            {listing.contactAddress && <p className="text-[10px] text-slate-400 truncate max-w-[150px]" title={listing.contactAddress}>📍 {listing.contactAddress}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-xs" style={{ color: "#9CA3AF" }}>—</span>
+                        )}
                       </td>
                       <td className="px-3 py-3.5 hidden lg:table-cell" style={{ color: "#6B7280" }}>{(listing.views || 0).toLocaleString()}</td>
                       <td className="px-3 py-3.5"><StatusBadge status={listing.moderationStatus} /></td>
