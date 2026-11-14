@@ -2494,11 +2494,21 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                 <input type="file" accept="application/pdf,image/*" className="hidden" onChange={handleBrochureFileSelected} disabled={brochureUploading} />
               </label>
               {form.brochureUrl && (
-                <a href={form.brochureUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-600 hover:underline shrink-0">
-                  Test Link ↗
-                </a>
+                <>
+                  <a href={form.brochureUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-600 hover:underline shrink-0">
+                    Test Link ↗
+                  </a>
+                  <button type="button" onClick={() => set("brochureUrl", "")} className="text-xs text-red-500 hover:underline shrink-0">
+                    Remove
+                  </button>
+                </>
               )}
             </div>
+            {form.brochureUrl && (
+              <p className="text-xs font-medium text-emerald-700 mt-1 flex items-center gap-1">
+                ✓ Brochure link attached — scroll to the bottom and click <strong>&quot;{isEditing ? "Save Changes" : "Create Listing"}&quot;</strong> to save.
+              </p>
+            )}
             {brochureUploadError && <p className="text-xs font-semibold mt-1.5" style={{ color: "#DC2626" }}>{brochureUploadError}</p>}
           </Field>
         </div>
