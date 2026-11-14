@@ -28,3 +28,4 @@ create policy "Admins can manage all client reviews"
   using (
     auth.uid() in (select id from public.admin_profiles)
   );
+

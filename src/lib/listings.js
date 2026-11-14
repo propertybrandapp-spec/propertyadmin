@@ -738,18 +738,14 @@ function daysAgo(isoDate) {
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
-// Every listing read pulls in its linked developer/project/agent profile (if
-// any) in the same query — Supabase resolves this via the FK relationship,
-// no extra round-trip needed. All come back `null` when a listing isn't
-// linked to one (e.g. public self-listings, which only ever set
-// developer_name/poster_name plain text instead).
+// Detail query: pulls in linked developer/project/agent profile for single property view
 const LISTING_SELECT = "*, developer:developers(*), project:projects(*), agent:agents(*)";
+// Bulk list query: selects listing columns directly without 3-way nested joins, keeping responses fast and preventing timeouts
+const LISTING_BULK_SELECT = "*";
 
 // ── Public site: only ever see moderation-approved ("Live") listings ────────
-// The database returns at most 1000 rows per request, so a single query silently
-// drops everything past the 1000th listing. Fetch in pages until a short page
-// comes back. One bad row never hides the rest.
-const PAGE_SIZE = 1000;
+// Fetch in compact pages of 50 so queries resolve fast under statement limits.
+const PAGE_SIZE = 50;
 
 function normalizeRows(rows) {
   const out = [];
@@ -767,7 +763,10 @@ async function fetchAllListings(buildQuery) {
   const rows = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await safeQuery(buildQuery().range(from, from + PAGE_SIZE - 1));
-    if (error) return { data: normalizeRows(rows), error: rows.length ? null : error };
+    if (error) {
+      console.warn("Listing page fetch interrupted at offset", from, error);
+      return { data: normalizeRows(rows), error: rows.length ? null : error };
+    }
     rows.push(...(data || []));
     if (!data || data.length < PAGE_SIZE) break;
   }
@@ -776,22 +775,27 @@ async function fetchAllListings(buildQuery) {
 
 export async function fetchPublicListings() {
   return fetchAllListings(() =>
-    supabase.from("listings").select(LISTING_SELECT).eq("status", "Live")
-      .order("created_at", { ascending: false }).order("id", { ascending: true })
+    supabase.from("listings").select(LISTING_BULK_SELECT).eq("status", "Live")
+      .order("created_at", { ascending: false })
   );
 }
 
 // ── Admin console: sees every listing regardless of moderation status ───────
 export async function fetchAdminListings() {
   return fetchAllListings(() =>
-    supabase.from("listings").select(LISTING_SELECT)
-      .order("created_at", { ascending: false }).order("id", { ascending: true })
+    supabase.from("listings").select(LISTING_BULK_SELECT)
+      .order("created_at", { ascending: false })
   );
 }
 
 export async function fetchListingById(id) {
-  const { data, error } = await safeQuery(supabase.from("listings").select(LISTING_SELECT).eq("id", id).single());
-  if (error) return { data: null, error };
+  let { data, error } = await safeQuery(supabase.from("listings").select(LISTING_SELECT).eq("id", id).single());
+  if (error) {
+    // If nested join fails/times out, fall back to plain listing row
+    const fallback = await safeQuery(supabase.from("listings").select(LISTING_BULK_SELECT).eq("id", id).single());
+    if (fallback.data) return { data: normalizeListing(fallback.data), error: null };
+    return { data: null, error };
+  }
   return { data: normalizeListing(data), error: null };
 }
 

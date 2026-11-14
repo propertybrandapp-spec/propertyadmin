@@ -13,3 +13,4 @@ alter table public.listings add column if not exists poster_address text;
 alter table public.listing_contacts add column if not exists name text;
 alter table public.listing_contacts add column if not exists email text;
 alter table public.listing_contacts add column if not exists address text;
+
