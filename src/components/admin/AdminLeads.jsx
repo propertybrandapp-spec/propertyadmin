@@ -20,6 +20,7 @@ function StageBadge({ stage }) {
 }
 
 function ChannelBadge({ lead }) {
+  const isBrochure = lead.source === "brochure-request" || (lead.interest && lead.interest.includes("[BROCHURE REQUEST"));
   const isRentReady = lead.source === "rent-ready" || (lead.interest && lead.interest.includes("[RENTREADY"));
   const isConsultation = lead.source === "book-expert" || lead.source === "consultation" || (lead.interest && lead.interest.includes("[CONSULTATION"));
   const isMembership = lead.source === "select-membership" || (lead.interest && lead.interest.includes("[SELECT MEMBERSHIP"));
@@ -28,6 +29,9 @@ function ChannelBadge({ lead }) {
   const isPartner = lead.source === "channel-partner" || (lead.interest && lead.interest.includes("[CHANNEL PARTNER"));
   const isListing = lead.listingId || lead.source === "property-detail";
 
+  if (isBrochure) {
+    return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-800 border border-violet-200">📄 Brochure Request</span>;
+  }
   if (isRentReady) {
     return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">⚡ RentReady</span>;
   }
@@ -56,6 +60,7 @@ function ChannelBadge({ lead }) {
 function LeadDrawer({ lead, onClose, onStageChange, onDelete, onNavigate }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const isBrochure = lead.source === "brochure-request" || (lead.interest && lead.interest.includes("[BROCHURE REQUEST"));
   const isRentReady = lead.source === "rent-ready" || (lead.interest && lead.interest.includes("[RENTREADY"));
   const isConsultation = lead.source === "book-expert" || lead.source === "consultation" || (lead.interest && lead.interest.includes("[CONSULTATION"));
   const isMembership = lead.source === "select-membership" || (lead.interest && lead.interest.includes("[SELECT MEMBERSHIP"));
@@ -81,6 +86,18 @@ function LeadDrawer({ lead, onClose, onStageChange, onDelete, onNavigate }) {
           </div>
           <StageBadge stage={lead.stage} />
         </div>
+
+        {/* ── Specialized Brochure Request Card ── */}
+        {isBrochure && (
+          <div className="mb-6 p-4 rounded-2xl bg-violet-50/80 border border-violet-200 space-y-2.5 text-xs text-violet-950">
+            <div className="flex items-center gap-2 font-bold text-violet-900 border-b border-violet-200 pb-1.5">
+              <span>📄</span> Official Property Brochure Request
+            </div>
+            <p className="leading-relaxed whitespace-pre-wrap font-sans text-gray-800">
+              {lead.interest?.replace("[BROCHURE REQUEST] ", "") || "Requested official brochure."}
+            </p>
+          </div>
+        )}
 
         {/* ── Specialized RentReady Application Card ── */}
         {isRentReady && (
@@ -272,6 +289,7 @@ export default function AdminLeads({ onNavigate, onLogout, adminProfile }) {
 
   const filtered = leads.filter((l) => {
     if (activeFilter !== "All" && l.stage !== activeFilter) return false;
+    if (channelFilter === "Brochure" && l.source !== "brochure-request" && !l.interest?.includes("[BROCHURE REQUEST")) return false;
     if (channelFilter === "RentReady" && l.source !== "rent-ready" && !l.interest?.includes("[RENTREADY")) return false;
     if (channelFilter === "Consultation" && !["book-expert", "consultation"].includes(l.source) && !l.interest?.includes("[CONSULTATION")) return false;
     if (channelFilter === "Membership" && l.source !== "select-membership" && !l.interest?.includes("[SELECT MEMBERSHIP")) return false;
@@ -293,6 +311,7 @@ export default function AdminLeads({ onNavigate, onLogout, adminProfile }) {
 
   const channelCounts = {
     All: leads.length,
+    Brochure: leads.filter((l) => l.source === "brochure-request" || l.interest?.includes("[BROCHURE REQUEST]")).length,
     RentReady: leads.filter((l) => l.source === "rent-ready" || l.interest?.includes("[RENTREADY")).length,
     Consultation: leads.filter((l) => ["book-expert", "consultation"].includes(l.source) || l.interest?.includes("[CONSULTATION")).length,
     Membership: leads.filter((l) => l.source === "select-membership" || l.interest?.includes("[SELECT MEMBERSHIP")).length,
@@ -345,6 +364,7 @@ export default function AdminLeads({ onNavigate, onLogout, adminProfile }) {
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
             {[
               { id: "All", label: "All Channels" },
+              { id: "Brochure", label: "📄 Brochure Requests" },
               { id: "RentReady", label: "⚡ RentReady" },
               { id: "Consultation", label: "🛡️ Consultations" },
               { id: "Membership", label: "✨ Memberships" },
