@@ -198,6 +198,36 @@ export async function deleteLead(id) {
 // furnishingRequirement, leaseDuration, petRequirement, parkingRequirement,
 // preferredLocalities, commuteDestination, wantsBrokerageFree,
 // wantsManagedRental }.
+const ALLOWED_BUYER_PURPOSES = ["Self-Use", "Investment", "Rental Income", "Second Home", "Retirement"];
+const ALLOWED_BUYER_TIMELINES = ["Immediately", "1-3 Months", "3-6 Months", "6-12 Months", "Just Exploring"];
+
+function sanitizeBuyerPurpose(val) {
+  if (!val || typeof val !== "string") return null;
+  if (ALLOWED_BUYER_PURPOSES.includes(val)) return val;
+  const l = val.toLowerCase();
+  if (l.includes("live") || l.includes("self") || l.includes("myself") || l.includes("family")) return "Self-Use";
+  if (l.includes("invest")) return "Investment";
+  if (l.includes("rent")) return "Rental Income";
+  if (l.includes("second") || l.includes("vacation")) return "Second Home";
+  if (l.includes("retire")) return "Retirement";
+  return null;
+}
+
+function sanitizeBuyerTimeline(val) {
+  if (!val || typeof val !== "string") return null;
+  if (ALLOWED_BUYER_TIMELINES.includes(val)) return val;
+  const l = val.toLowerCase();
+  if (l.includes("immed")) return "Immediately";
+  if (l.includes("1") && l.includes("3")) return "1-3 Months";
+  if (l.includes("within 1") || l.includes("1 month")) return "1-3 Months";
+  if (l.includes("3") && l.includes("6")) return "3-6 Months";
+  if (l.includes("6") || l.includes("12")) return "6-12 Months";
+  if (l.includes("explor")) return "Just Exploring";
+  return null;
+}
+
+const isUuid = (val) => typeof val === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
 export async function submitLead({ name, phone, email, interest, budget, source = "Website", listingId, stage, buyerPreferences = {}, renterPreferences = {} }) {
   const { data: sessionData } = await safeQuery(supabase.auth.getSession());
   const b = buyerPreferences;
@@ -223,8 +253,39 @@ export async function submitLead({ name, phone, email, interest, budget, source 
     finalInterest = `[CONSULTATION BOOKING] ${finalInterest}`.trim();
   }
 
-  const { error } = await safeQuery(
-    supabase.from("leads").insert({
+  const validListingId = isUuid(listingId) ? listingId : null;
+
+  const fullPayload = {
+    name,
+    phone,
+    email: email || null,
+    interest: finalInterest || null,
+    budget_label: budget || null,
+    source: dbSource,
+    stage: stage || "New",
+    listing_id: validListingId,
+    buyer_purpose: sanitizeBuyerPurpose(b.purpose),
+    buyer_budget_max: b.budgetMax ? Number(b.budgetMax) || null : null,
+    buyer_comfortable_emi: b.comfortableEmi ? Number(b.comfortableEmi) || null : null,
+    buyer_preferred_locations: Array.isArray(b.preferredLocations) ? b.preferredLocations : [],
+    buyer_acceptable_locations: Array.isArray(b.acceptableLocations) ? b.acceptableLocations : [],
+    buyer_excluded_locations: Array.isArray(b.excludedLocations) ? b.excludedLocations : [],
+    buyer_purchase_timeline: sanitizeBuyerTimeline(b.purchaseTimeline),
+    buyer_priority_factors: Array.isArray(b.priorityFactors) ? b.priorityFactors : [],
+    buyer_loan_assistance: b.loanAssistance || null,
+    buyer_open_to_under_construction: b.openToUnderConstruction || null,
+    buyer_must_have_features: Array.isArray(b.mustHaveFeatures) ? b.mustHaveFeatures : [],
+    buyer_wants_comparison: !!b.wantsComparison,
+  };
+  if (sessionData?.session?.user?.id && isUuid(sessionData.session.user.id)) {
+    fullPayload.client_id = sessionData.session.user.id;
+  }
+
+  let { error } = await safeQuery(supabase.from("leads").insert(fullPayload));
+
+  if (error) {
+    console.warn("Extended lead insert failed, attempting safe core fallback:", error.message || error);
+    const corePayload = {
       name,
       phone,
       email: email || null,
@@ -232,33 +293,25 @@ export async function submitLead({ name, phone, email, interest, budget, source 
       budget_label: budget || null,
       source: dbSource,
       stage: stage || "New",
-      listing_id: listingId || null,
-      client_id: sessionData?.session?.user?.id || null,
-      buyer_purpose: b.purpose || null,
-      buyer_budget_max: b.budgetMax || null,
-      buyer_comfortable_emi: b.comfortableEmi || null,
-      buyer_preferred_locations: b.preferredLocations || [],
-      buyer_acceptable_locations: b.acceptableLocations || [],
-      buyer_excluded_locations: b.excludedLocations || [],
-      buyer_purchase_timeline: b.purchaseTimeline || null,
-      buyer_priority_factors: b.priorityFactors || [],
-      buyer_loan_assistance: b.loanAssistance || null,
-      buyer_open_to_under_construction: b.openToUnderConstruction || null,
-      buyer_must_have_features: b.mustHaveFeatures || [],
-      buyer_wants_comparison: !!b.wantsComparison,
-      renter_move_in_date: r.moveInDate || null,
-      renter_monthly_rent_budget: r.monthlyRentBudget || null,
-      renter_upfront_budget: r.upfrontBudget || null,
-      renter_profile_type: r.profileType || null,
-      renter_furnishing_requirement: r.furnishingRequirement || null,
-      renter_lease_duration: r.leaseDuration || null,
-      renter_pet_requirement: r.petRequirement || null,
-      renter_parking_requirement: r.parkingRequirement || null,
-      renter_preferred_localities: r.preferredLocalities || [],
-      renter_commute_destination: r.commuteDestination || null,
-      renter_wants_brokerage_free: !!r.wantsBrokerageFree,
-      renter_wants_managed_rental: !!r.wantsManagedRental,
-    })
-  );
+      listing_id: validListingId,
+    };
+    const fallbackRes = await safeQuery(supabase.from("leads").insert(corePayload));
+    if (fallbackRes.error && validListingId) {
+      const finalRes = await safeQuery(
+        supabase.from("leads").insert({
+          name,
+          phone,
+          email: email || null,
+          interest: finalInterest || null,
+          budget_label: budget || null,
+          source: dbSource,
+          stage: stage || "New",
+        })
+      );
+      error = finalRes.error;
+    } else {
+      error = fallbackRes.error;
+    }
+  }
   return { error };
 }
