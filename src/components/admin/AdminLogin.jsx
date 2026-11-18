@@ -1,40 +1,55 @@
 import { useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase, safeQuery } from "../../lib/supabaseClient";
 
 // URL of the public marketing site — set VITE_MAIN_SITE_URL in .env.
 // Falls back to "/" (old same-domain behavior) if it's not configured.
 const MAIN_SITE_URL = import.meta.env.VITE_MAIN_SITE_URL || "/";
+const SUPABASE_PROJECT_REF = "hotvfyxtznjtdpmrrxhq";
 
 export default function AdminLogin({ onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleLogin(e) {
     e.preventDefault();
     setError("");
+    setIsPaused(false);
     setLoading(true);
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error: authError } = await safeQuery(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        }),
+        2,
+        1000
+      );
 
       if (authError) {
-        setError(authError.message);
+        const msg = authError.message || "";
+        if (msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network") || msg.toLowerCase().includes("timeout")) {
+          setIsPaused(true);
+          setError("Failed to fetch — Unable to reach the Supabase database.");
+        } else {
+          setError(msg);
+        }
         return;
       }
 
       // Confirm this user actually has an admin_profiles row (i.e. is an admin,
       // not just any Supabase auth user — important since auth and admin
       // authorization are two separate concerns).
-      const { data: profile, error: profileError } = await supabase
-        .from("admin_profiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .single();
+      const { data: profile, error: profileError } = await safeQuery(
+        supabase
+          .from("admin_profiles")
+          .select("*")
+          .eq("id", data.user.id)
+          .single()
+      );
 
       if (profileError || !profile) {
         setError("This account does not have admin access.");
@@ -44,7 +59,13 @@ export default function AdminLogin({ onLoginSuccess }) {
 
       onLoginSuccess(profile);
     } catch (err) {
-      setError(err?.message || "Network error — please check your connection and try again.");
+      const msg = err?.message || "";
+      if (msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network") || msg.toLowerCase().includes("timeout")) {
+        setIsPaused(true);
+        setError("Failed to fetch — Unable to reach the Supabase database.");
+      } else {
+        setError(msg || "Network error — please check your connection and try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -96,8 +117,24 @@ export default function AdminLogin({ onLoginSuccess }) {
             </div>
 
             {error && (
-              <div className="text-sm rounded-xl px-4 py-3" style={{ background: "#FEE2E2", color: "#DC2626" }}>
-                {error}
+              <div className="text-sm rounded-xl px-4 py-3 space-y-2" style={{ background: "#FEE2E2", color: "#DC2626" }}>
+                <p className="font-semibold">{error}</p>
+                {isPaused && (
+                  <p className="text-xs leading-relaxed text-red-800">
+                    Your Supabase free-tier database appears to be <strong>paused due to inactivity</strong>.
+                    <br />
+                    Please visit your{" "}
+                    <a
+                      href={`https://supabase.com/dashboard/project/${SUPABASE_PROJECT_REF}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold underline hover:text-red-950"
+                    >
+                      Supabase Dashboard (hotvfyxtznjtdpmrrxhq) ↗
+                    </a>{" "}
+                    and click <strong>"Restore project"</strong> to bring the database back online.
+                  </p>
+                )}
               </div>
             )}
 
