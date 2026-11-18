@@ -238,21 +238,28 @@ export function normalizeListing(row) {
     // ── Section 2D: Project & Developer Information ──
     developerId: row.developer_id || null,
     developerName: row.developer_name || row.developer?.name || null,  // plain-text fallback when not linked
+    developerPositioning: row.developer_positioning || row.developer?.positioning || null,
     // Nested profile from the join (see LISTING_SELECT) — null if this
     // listing isn't linked to a verified developer/project profile.
     developer: row.developer ? {
       id: row.developer.id,
       name: row.developer.name,
       verified: !!row.developer.verified,
+      positioning: row.developer.positioning || row.developer_positioning || null,
       experienceYears: row.developer.experience_years != null ? Number(row.developer.experience_years) : null,
       completedProjectsCount: row.developer.completed_projects_count != null ? Number(row.developer.completed_projects_count) : null,
       currentProjectsCount: row.developer.current_projects_count != null ? Number(row.developer.current_projects_count) : null,
       description: row.developer.description || null,
     } : null,
     projectId: row.project_id || null,
+    projectDescription: row.project_description || row.project?.description || null,
+    constructionPercent: row.construction_percent != null ? Number(row.construction_percent) : (row.project?.construction_percent != null ? Number(row.project.construction_percent) : null),
+    constructionUpdates: row.construction_updates || row.project?.construction_updates || null,
+    videoReviews: Array.isArray(row.video_reviews) ? row.video_reviews : (Array.isArray(row.project?.video_reviews) ? row.project.video_reviews : []),
     project: row.project ? {
       id: row.project.id,
       name: row.project.name,
+      description: row.project.description || row.project_description || null,
       landAreaAcres: row.project.land_area_acres != null ? Number(row.project.land_area_acres) : null,
       totalTowers: row.project.total_towers != null ? Number(row.project.total_towers) : null,
       totalFloors: row.project.total_floors != null ? Number(row.project.total_floors) : null,
@@ -261,6 +268,8 @@ export function normalizeListing(row) {
       homesPerFloor: row.project.homes_per_floor != null ? Number(row.project.homes_per_floor) : null,
       openSpacePercent: row.project.open_space_percent != null ? Number(row.project.open_space_percent) : null,
       constructionStage: row.project.construction_stage || null,
+      constructionPercent: row.project.construction_percent != null ? Number(row.project.construction_percent) : (row.construction_percent != null ? Number(row.construction_percent) : null),
+      constructionUpdates: row.project.construction_updates || row.construction_updates || null,
       constructionStageVerifiedAt: row.project.construction_stage_verified_at || null,
       expectedPossessionDate: row.project.expected_possession_date || null,
       handoverTimeline: row.project.handover_timeline || null,
@@ -274,6 +283,7 @@ export function normalizeListing(row) {
       structureType: row.project.structure_type || null,
       keyMaterials: row.project.key_materials || null,
       constructionProgressPhotos: Array.isArray(row.project.construction_progress_photos) ? row.project.construction_progress_photos : [],
+      videoReviews: Array.isArray(row.project.video_reviews) ? row.project.video_reviews : [],
     } : null,
 
     // ── Section 2H: Seller / Agent Information ──
@@ -354,7 +364,12 @@ export function normalizeListing(row) {
     droneViewUrl: row.drone_view_url || null,
     floorPlanUrl: row.floor_plan_url || null,
     floorPlanCaption: row.floor_plan_caption || null,
-    brochureUrl: row.brochure_url || null,
+    brochureUrl:
+      row.brochure_url ||
+      (Array.isArray(row.project?.documents) ? row.project.documents : [])
+        .concat(Array.isArray(row.project_documents) ? row.project_documents : [])
+        .find((d) => d?.url && ((d.type && d.type.toLowerCase().includes("brochure")) || (d.label && d.label.toLowerCase().includes("brochure"))))?.url ||
+      null,
 
     // ── Section 3C: Questions for Sellers / Listing Owners ──
     // sellerReasonForSelling and sellerMinimumAcceptablePrice are sensitive —
@@ -455,7 +470,19 @@ function plotColumns(f) {
 // If the database hasn't had migration_029 applied yet, PostgREST rejects the
 // plot columns. Rather than failing the whole listing, retry without them and
 // keep the plot facts in the description so nothing the owner typed is lost.
-const NEW_OPTIONAL_COLUMNS = ["location_video_url", "ideal_for", "open_for_jda", "jda_terms", "title_verified", "zoning_conversion_done"];
+const NEW_OPTIONAL_COLUMNS = [
+  "location_video_url",
+  "ideal_for",
+  "open_for_jda",
+  "jda_terms",
+  "title_verified",
+  "zoning_conversion_done",
+  "project_description",
+  "developer_positioning",
+  "construction_percent",
+  "construction_updates",
+  "video_reviews",
+];
 
 function isMissingPlotColumnError(error) {
   const msg = `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
@@ -637,7 +664,12 @@ export function denormalizeListing(input) {
     // itself is already set above under Section 2A identity fields.
     developer_id: f.developerId || null,
     developer_name: f.developerName || null,
+    developer_positioning: f.developerPositioning || null,
     project_id: f.projectId || null,
+    project_description: f.projectDescription || null,
+    construction_percent: f.constructionPercent !== "" && f.constructionPercent != null ? Number(f.constructionPercent) : null,
+    construction_updates: f.constructionUpdates || null,
+    video_reviews: Array.isArray(f.videoReviews) ? f.videoReviews.filter((v) => v && (v.url || v.title)) : [],
 
     // ── Section 2H: Seller / Agent Information ──
     // agent_id links to a full agents-directory profile (admin-only —
@@ -741,7 +773,7 @@ function daysAgo(isoDate) {
 // Detail query: pulls in linked developer/project/agent profile for single property view
 const LISTING_SELECT = "*, developer:developers(*), project:projects(*), agent:agents(*)";
 // Bulk list query: selects all essential listing columns directly without slow nested joins or huge unused fields, preventing timeouts
-const LISTING_BULK_SELECT = "id, listing_code, title, status, price_label, price_value, price_on_request, location, city, locality, landmark, pincode, property_type, project_name, developer_name, bhk, area_sqft, images, image_url, posted_by, poster_name, poster_phone, poster_email, verified, featured, badge, badge_color, created_at, updated_at, tags, amenities, transaction_type, listing_type, possession, views, bathrooms, balconies, furnishing, property_condition, facing, floor, floor_number, total_floors, rera_status, video_urls, location_video_url, ideal_for, investment_corridor, google_maps_link, latitude, longitude, unit_configurations, handover_date, handover_timeline, price_trend, description, brochure_url, virtual_tour_url, floor_plan_url";
+const LISTING_BULK_SELECT = "id, listing_code, title, status, price_label, price_value, price_on_request, location, city, locality, landmark, pincode, property_type, project_name, developer_name, developer_positioning, bhk, area_sqft, built_up_area_sqft, super_built_up_area_sqft, carpet_area_sqft, project_id, developer_id, images, image_url, posted_by, poster_name, poster_phone, poster_email, verified, featured, badge, badge_color, created_at, updated_at, tags, amenities, transaction_type, listing_type, possession, views, bathrooms, balconies, furnishing, property_condition, facing, floor, floor_number, total_floors, rera_status, video_urls, location_video_url, ideal_for, investment_corridor, google_maps_link, latitude, longitude, unit_configurations, handover_date, handover_timeline, price_trend, description, project_description, construction_percent, construction_updates, video_reviews, brochure_url, virtual_tour_url, floor_plan_url";
 
 // ── Public site: only ever see moderation-approved ("Live") listings ────────
 // Fetch in compact pages of 80 so queries resolve fast under statement limits.

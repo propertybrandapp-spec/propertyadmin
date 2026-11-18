@@ -13,6 +13,7 @@ function toDeveloper(row) {
     id: row.id,
     name: row.name,
     verified: !!row.verified,
+    positioning: row.positioning || "",
     experienceYears: row.experience_years != null ? Number(row.experience_years) : null,
     completedProjectsCount: row.completed_projects_count != null ? Number(row.completed_projects_count) : null,
     currentProjectsCount: row.current_projects_count != null ? Number(row.current_projects_count) : null,
@@ -24,6 +25,7 @@ function fromDeveloper(d) {
   return {
     name: d.name,
     verified: !!d.verified,
+    positioning: d.positioning || null,
     experience_years: d.experienceYears !== "" && d.experienceYears != null ? parseInt(d.experienceYears, 10) : null,
     completed_projects_count: d.completedProjectsCount !== "" && d.completedProjectsCount != null ? parseInt(d.completedProjectsCount, 10) : null,
     current_projects_count: d.currentProjectsCount !== "" && d.currentProjectsCount != null ? parseInt(d.currentProjectsCount, 10) : null,
@@ -54,6 +56,10 @@ function toProject(row) {
   return {
     id: row.id,
     name: row.name,
+    description: row.description || "",
+    constructionPercent: row.construction_percent != null ? Number(row.construction_percent) : null,
+    constructionUpdates: row.construction_updates || "",
+    videoReviews: Array.isArray(row.video_reviews) ? row.video_reviews : [],
     developerId: row.developer_id || null,
     landAreaAcres: row.land_area_acres != null ? Number(row.land_area_acres) : null,
     totalTowers: row.total_towers != null ? Number(row.total_towers) : null,
@@ -85,6 +91,10 @@ function fromProject(p) {
   return {
     name: p.name,
     developer_id: p.developerId || null,
+    description: p.description || null,
+    construction_percent: numOrNull(p.constructionPercent),
+    construction_updates: p.constructionUpdates || null,
+    video_reviews: Array.isArray(p.videoReviews) ? p.videoReviews.filter((v) => v && (v.url || v.title)) : [],
     land_area_acres: numOrNull(p.landAreaAcres),
     total_towers: numOrNull(p.totalTowers),
     total_floors: numOrNull(p.totalFloors),

@@ -20,26 +20,37 @@ function Label({ children, hint }) {
   );
 }
 
-function RowList({ rows, onChange, columns, addLabel, empty, max = 12, datalistId }) {
+function RowList({ rows, onChange, columns, addLabel, empty, max = 16, datalistId }) {
   const update = (i, key, value) => onChange(rows.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)));
   return (
     <div className="space-y-2">
       {rows.length === 0 && <p className="text-xs" style={{ color: "#6B7280" }}>{empty}</p>}
+      {rows.length > 0 && (
+        <div className="grid gap-2 text-[10px] font-bold text-slate-500 uppercase px-1" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr)) 32px` }}>
+          {columns.map((c) => (
+            <span key={c.key} className="truncate">{c.label}</span>
+          ))}
+          <span />
+        </div>
+      )}
       {rows.map((row, i) => (
         <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr)) 32px` }}>
-          {columns.map((c) => (
-            <input key={c.key} value={row[c.key] ?? ""} inputMode={c.numeric ? "numeric" : undefined}
-              onChange={(e) => update(i, c.key, c.numeric ? e.target.value.replace(/[^\d.,]/g, "") : e.target.value)}
-              placeholder={c.placeholder} aria-label={`${c.label} ${i + 1}`} className={input} style={inputStyle}
-              list={c.key === "label" && datalistId ? datalistId : undefined} />
-          ))}
+          {columns.map((c) => {
+            const fallbackVal = c.key === "superArea" ? (row.superArea ?? row.areaSqft ?? "") : c.key === "priceRange" ? (row.priceRange ?? (row.price ? String(row.price) : "")) : (row[c.key] ?? "");
+            return (
+              <input key={c.key} value={fallbackVal} inputMode={c.numeric ? "numeric" : undefined}
+                onChange={(e) => update(i, c.key, c.numeric ? e.target.value.replace(/[^\d.,]/g, "") : e.target.value)}
+                placeholder={c.placeholder} aria-label={`${c.label} ${i + 1}`} className={input} style={inputStyle}
+                list={c.key === "label" && datalistId ? datalistId : undefined} />
+            );
+          })}
           <button type="button" onClick={() => onChange(rows.filter((_, idx) => idx !== i))} aria-label={`Remove row ${i + 1}`}
-            className="text-base font-bold" style={{ color: "#DC2626" }}>×</button>
+            className="text-base font-bold flex items-center justify-center hover:opacity-80" style={{ color: "#DC2626" }}>×</button>
         </div>
       ))}
       {rows.length < max && (
         <button type="button" onClick={() => onChange([...rows, Object.fromEntries(columns.map((c) => [c.key, ""]))])}
-          className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#EFF6FF", color: "#1565C0" }}>
+          className="text-xs font-bold px-3 py-1.5 rounded-lg transition" style={{ background: "#EFF6FF", color: "#1565C0" }}>
           + {addLabel}
         </button>
       )}
@@ -63,7 +74,7 @@ export default function ProjectExtrasFields({ form, set, isLand = false, hasBhk 
     const val = customSizeDraft.trim();
     if (!val) return;
     const formatted = /^\d+(\.\d+)?$/.test(val) ? `${val} BHK` : val;
-    set("unitConfigs", [...(form.unitConfigs || []), { label: formatted, areaSqft: "", price: "" }]);
+    set("unitConfigs", [...(form.unitConfigs || []), { label: formatted, carpetArea: "", builtUpArea: "", superArea: "", priceRange: "" }]);
     setCustomSizeDraft("");
     setShowCustomSize(false);
   }
@@ -88,7 +99,7 @@ export default function ProjectExtrasFields({ form, set, isLand = false, hasBhk 
               key={preset}
               type="button"
               onClick={() => {
-                set("unitConfigs", [...(form.unitConfigs || []), { label: preset, areaSqft: "", price: "" }]);
+                set("unitConfigs", [...(form.unitConfigs || []), { label: preset, carpetArea: "", builtUpArea: "", superArea: "", priceRange: "" }]);
               }}
               className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 transition-colors"
             >
@@ -146,12 +157,14 @@ export default function ProjectExtrasFields({ form, set, isLand = false, hasBhk 
         </datalist>
 
         <RowList
-          rows={form.unitConfigs || []} onChange={(v) => set("unitConfigs", v)} addLabel="Add a size" empty="Only one size? Skip this — the details above are enough."
+          rows={form.unitConfigs || []} onChange={(v) => set("unitConfigs", v)} addLabel="Add a size configuration" empty="Only one size? Skip this — the main details above are enough."
           datalistId="size-label-presets"
           columns={[
-            { key: "label", label: "Size name", placeholder: isLand ? "e.g. 30×40 plot" : hasBhk ? "e.g. 3 BHK" : "e.g. Unit A" },
-            { key: "areaSqft", label: "Area (sq ft)", placeholder: "Area (sq ft)", numeric: true },
-            { key: "price", label: "Price (₹)", placeholder: "e.g. ₹60,000 - ₹80,000 or ₹62 Lac", numeric: false },
+            { key: "label", label: "Size Name", placeholder: isLand ? "e.g. 30×40 plot" : hasBhk ? "e.g. 3 BHK" : "e.g. Unit A" },
+            { key: "carpetArea", label: "CA (sq ft)", placeholder: "Carpet Area", numeric: true },
+            { key: "builtUpArea", label: "BUA (sq ft)", placeholder: "Built-up", numeric: true },
+            { key: "superArea", label: "SA (sq ft)", placeholder: "Sale / Super Area", numeric: true },
+            { key: "priceRange", label: "Price / Range", placeholder: "e.g. ₹85 L – ₹1.15 Cr", numeric: false },
           ]}
         />
       </div>

@@ -212,6 +212,7 @@ const EMPTY_FORM = {
   developerMode: "none",
   developerId: null,
   developerName: "",
+  developerPositioning: "",
   developerVerified: false,
   developerExperienceYears: "",
   developerCompletedProjectsCount: "",
@@ -222,6 +223,10 @@ const EMPTY_FORM = {
   projectId: null,
   // projectName already declared above (Section 2A) — reused as this
   // project profile's name too, whether linked or freshly created.
+  projectDescription: "",
+  constructionPercent: "",
+  constructionUpdates: "",
+  videoReviews: [],
   projectLandAreaAcres: "",
   projectTotalTowers: "",
   projectTotalFloors: "",
@@ -516,6 +521,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       developerMode: editingListing.developerId ? "existing" : "none",
       developerId: editingListing.developerId || null,
       developerName: nullToEmpty(editingListing.developerName || editingListing.developer?.name),
+      developerPositioning: nullToEmpty(editingListing.developerPositioning || editingListing.developer?.positioning),
       developerVerified: !!editingListing.developer?.verified,
       developerExperienceYears: nullToEmpty(editingListing.developer?.experienceYears),
       developerCompletedProjectsCount: nullToEmpty(editingListing.developer?.completedProjectsCount),
@@ -523,6 +529,12 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       developerDescription: nullToEmpty(editingListing.developer?.description),
       projectMode: editingListing.projectId ? "existing" : "none",
       projectId: editingListing.projectId || null,
+      projectDescription: nullToEmpty(editingListing.projectDescription || editingListing.project?.description),
+      constructionPercent: nullToEmpty(editingListing.constructionPercent ?? editingListing.project?.constructionPercent),
+      constructionUpdates: nullToEmpty(editingListing.constructionUpdates || editingListing.project?.constructionUpdates),
+      videoReviews: Array.isArray(editingListing.videoReviews)
+        ? editingListing.videoReviews.map((v, i) => ({ ...v, _key: `rev-${i}` }))
+        : (Array.isArray(editingListing.project?.videoReviews) ? editingListing.project.videoReviews.map((v, i) => ({ ...v, _key: `rev-${i}` })) : []),
       projectLandAreaAcres: nullToEmpty(editingListing.project?.landAreaAcres),
       projectTotalTowers: nullToEmpty(editingListing.project?.totalTowers),
       projectTotalFloors: nullToEmpty(editingListing.project?.totalFloors),
@@ -629,6 +641,8 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [options, setOptions] = useState(null); // null = loading
   const [videoDraft, setVideoDraft] = useState("");
+  const [showAddVideoInPhotos, setShowAddVideoInPhotos] = useState(false);
+  const [photoVideoDraft, setPhotoVideoDraft] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -698,6 +712,52 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
 
   function removeVideoUrl(url) {
     setForm((f) => ({ ...f, videoUrls: f.videoUrls.filter((u) => u !== url) }));
+  }
+
+  function extractYouTubeId(url) {
+    if (!url) return null;
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i);
+    return match ? match[1] : null;
+  }
+
+  function getVideoThumbnail(url) {
+    const ytid = extractYouTubeId(url);
+    if (ytid) return `https://img.youtube.com/vi/${ytid}/hqdefault.jpg`;
+    return null;
+  }
+
+  function handleAddVideoInPhotos() {
+    const trimmed = photoVideoDraft.trim();
+    if (!trimmed) return;
+    if (!form.videoUrls.includes(trimmed)) {
+      setForm((f) => ({ ...f, videoUrls: [...f.videoUrls, trimmed] }));
+    }
+    setPhotoVideoDraft("");
+    setShowAddVideoInPhotos(false);
+  }
+
+  function addVideoReview() {
+    setForm((f) => ({
+      ...f,
+      videoReviews: [
+        ...(Array.isArray(f.videoReviews) ? f.videoReviews : []),
+        { _key: `rev-${Date.now()}`, url: "", title: "", reviewer: "" },
+      ],
+    }));
+  }
+
+  function updateVideoReview(key, field, value) {
+    setForm((f) => ({
+      ...f,
+      videoReviews: (f.videoReviews || []).map((v) => (v._key === key ? { ...v, [field]: value } : v)),
+    }));
+  }
+
+  function removeVideoReview(key) {
+    setForm((f) => ({
+      ...f,
+      videoReviews: (f.videoReviews || []).filter((v) => v._key !== key),
+    }));
   }
 
   function set(key, value) {
@@ -992,6 +1052,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     const developerData = {
       name: form.developerName,
       verified: form.developerVerified,
+      positioning: form.developerPositioning || null,
       experienceYears: form.developerExperienceYears,
       completedProjectsCount: form.developerCompletedProjectsCount,
       currentProjectsCount: form.developerCurrentProjectsCount,
@@ -1014,6 +1075,10 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
     const projectData = {
       name: form.projectName,
       developerId,
+      description: form.projectDescription || null,
+      constructionPercent: form.constructionPercent !== "" && form.constructionPercent != null ? Number(form.constructionPercent) : null,
+      constructionUpdates: form.constructionUpdates || null,
+      videoReviews: Array.isArray(form.videoReviews) ? form.videoReviews.filter((v) => v && (v.url || v.title)) : [],
       landAreaAcres: form.projectLandAreaAcres,
       totalTowers: form.projectTotalTowers,
       totalFloors: form.projectTotalFloors,
@@ -1053,6 +1118,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       ...f,
       developerId: d.id,
       developerName: d.name,
+      developerPositioning: d.positioning ?? "",
       developerVerified: d.verified,
       developerExperienceYears: d.experienceYears ?? "",
       developerCompletedProjectsCount: d.completedProjectsCount ?? "",
@@ -1068,6 +1134,10 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
       ...f,
       projectId: p.id,
       projectName: p.name,
+      projectDescription: p.description ?? "",
+      constructionPercent: p.constructionPercent ?? "",
+      constructionUpdates: p.constructionUpdates ?? "",
+      videoReviews: (p.videoReviews || []).map((v, i) => ({ ...v, _key: `sel-${i}` })),
       projectLandAreaAcres: p.landAreaAcres ?? "",
       projectTotalTowers: p.totalTowers ?? "",
       projectTotalFloors: p.totalFloors ?? "",
@@ -2005,6 +2075,10 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                 </Field>
               </>
             )}
+
+            <Field label="Developer Positioning / Brand Statement" hint="Brand positioning statement or tagline, e.g. 'Pioneering luxury & sustainable architecture in Odisha for 20+ years'.">
+              <TextInput value={form.developerPositioning} onChange={(e) => set("developerPositioning", e.target.value)} placeholder="e.g. Pioneering luxury & sustainable architecture in Odisha" />
+            </Field>
           </div>
 
           {/* ── Project ── */}
@@ -2025,6 +2099,21 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
                 <TextInput value={form.projectName} onChange={(e) => set("projectName", e.target.value)} placeholder="e.g. Skyline Residency" />
               </Field>
             )}
+
+            <Field label="Project Overview & Vision (Project Description)" hint="Rich narrative describing the project concept, architecture, landscape, and lifestyle vision.">
+              <textarea value={form.projectDescription} onChange={(e) => set("projectDescription", e.target.value)} rows={3}
+                className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none" style={inputStyle}
+                placeholder="e.g. Designed by renowned architects, this landmark project blends biophilic architecture with high-luxury smart living..." />
+            </Field>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Overall Construction Progress (%)" hint="0 to 100% progress bar on listing page">
+                <TextInput type="number" min="0" max="100" value={form.constructionPercent} onChange={(e) => set("constructionPercent", e.target.value)} placeholder="e.g. 78" />
+              </Field>
+              <Field label="Latest Construction Updates & Milestones" hint="Current on-ground status notes">
+                <TextInput value={form.constructionUpdates} onChange={(e) => set("constructionUpdates", e.target.value)} placeholder="e.g. Tower 2 14th slab casted. Interior work in progress." />
+              </Field>
+            </div>
 
             {form.projectMode === "existing" && (
               <Field label="Select Project">
@@ -2447,7 +2536,45 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               );
             })}
 
-            <label className="rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors aspect-square" style={{ border: "1.5px dashed #E2E8F0", color: "#6B7280" }}>
+            {/* Video links displayed alongside photos in gallery */}
+            {form.videoUrls.map((url) => {
+              const thumb = getVideoThumbnail(url);
+              return (
+                <div key={url} className="rounded-xl overflow-hidden border border-blue-200 bg-slate-900 flex flex-col">
+                  <div className="relative w-full aspect-square group bg-slate-950 flex items-center justify-center overflow-hidden">
+                    {thumb ? (
+                      <img src={thumb} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition" />
+                    ) : (
+                      <div className="text-3xl text-blue-400 font-bold">▶</div>
+                    )}
+                    <span className="absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-600 text-white flex items-center gap-1 shadow-xs">
+                      ▶ VIDEO
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeVideoUrl(url)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-black/75 text-white hover:bg-red-600 transition"
+                      title="Remove video"
+                    >
+                      ×
+                    </button>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute bottom-1 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/75 text-blue-300 hover:text-white"
+                    >
+                      Play ↗
+                    </a>
+                  </div>
+                  <div className="p-2 bg-slate-800 text-[11px] text-slate-300 truncate">
+                    {url.length > 30 ? url.slice(0, 30) + "…" : url}
+                  </div>
+                </div>
+              );
+            })}
+
+            <label className="rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors aspect-square hover:bg-slate-50" style={{ border: "1.5px dashed #E2E8F0", color: "#6B7280" }}>
               {uploading ? (
                 <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" style={{ color: "#1565C0" }}>
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
@@ -2463,7 +2590,45 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               )}
               <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple onChange={handleFilesSelected} className="hidden" disabled={uploading} />
             </label>
+
+            {/* + Add Video Link Button in Photos */}
+            <button
+              type="button"
+              onClick={() => setShowAddVideoInPhotos((v) => !v)}
+              className="rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors aspect-square hover:bg-blue-50 text-blue-700 border-1.5 border-dashed border-blue-300 bg-blue-50/40"
+            >
+              <span className="text-xl">🎬</span>
+              <span className="text-[10px] font-bold text-center px-1">+ Add Video Link</span>
+            </button>
           </div>
+
+          {/* Inline Add Video Link Drawer in Photos Section */}
+          {showAddVideoInPhotos && (
+            <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 space-y-2 mt-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-blue-900">Add Video Link to Photos &amp; Media Gallery</p>
+                <button type="button" onClick={() => setShowAddVideoInPhotos(false)} className="text-xs font-bold text-slate-500 hover:text-slate-700">✕</button>
+              </div>
+              <div className="flex gap-2">
+                <TextInput
+                  value={photoVideoDraft}
+                  onChange={(e) => setPhotoVideoDraft(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=... or Vimeo URL"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddVideoInPhotos(); } }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddVideoInPhotos}
+                  className="text-xs font-bold px-4 py-2 rounded-xl bg-[#1565C0] text-white shrink-0 hover:bg-[#0D47A1]"
+                >
+                  Add Video
+                </button>
+              </div>
+              <p className="text-[11px] text-blue-700">
+                Pasting a video link here sits alongside photos in the hero gallery slider on the property page.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* ── Virtual Experience (Section 2G) ── */}
@@ -2492,11 +2657,11 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
           <Field label="Floor Plan Caption">
             <TextInput value={form.floorPlanCaption} onChange={(e) => set("floorPlanCaption", e.target.value)} placeholder="e.g. 3BHK · 1450 sqft, with dimensions" />
           </Field>
-          <Field label="Brochure (Google Drive Link)" hint="Paste Google Drive link to the property brochure (make sure sharing is set to 'Anyone with the link can view'). You can also upload a PDF.">
+          <Field label="Official Brochure Link / File" hint="Paste link to the property brochure (PDF or cloud link), or upload a PDF file directly.">
             <div className="flex gap-2 items-center flex-wrap">
-              <TextInput value={form.brochureUrl} onChange={(e) => set("brochureUrl", e.target.value)} placeholder="https://drive.google.com/... or paste Drive link (or upload →)" />
+              <TextInput value={form.brochureUrl} onChange={(e) => set("brochureUrl", e.target.value)} placeholder="https://... or paste link (or upload →)" />
               <label className="text-xs font-bold px-3 py-2.5 rounded-lg text-center cursor-pointer shrink-0" style={{ background: "#F1F5F9", color: "#1F2937" }}>
-                {brochureUploading ? "Uploading…" : "Upload"}
+                {brochureUploading ? "Uploading…" : "Upload PDF"}
                 <input type="file" accept="application/pdf,image/*" className="hidden" onChange={handleBrochureFileSelected} disabled={brochureUploading} />
               </label>
               {form.brochureUrl && (
@@ -2512,7 +2677,7 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </div>
             {form.brochureUrl && (
               <p className="text-xs font-medium text-emerald-700 mt-1 flex items-center gap-1">
-                ✓ Brochure link attached — scroll to the bottom and click <strong>&quot;{isEditing ? "Save Changes" : "Create Listing"}&quot;</strong> to save.
+                ✓ Brochure attached — scroll to the bottom and click <strong>&quot;{isEditing ? "Save Changes" : "Create Listing"}&quot;</strong> to save.
               </p>
             )}
             {brochureUploadError && <p className="text-xs font-semibold mt-1.5" style={{ color: "#DC2626" }}>{brochureUploadError}</p>}
@@ -2581,6 +2746,55 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               />
               <button type="button" onClick={addVideoUrl} className="text-xs font-bold px-4 rounded-xl shrink-0" style={{ background: "#1565C0", color: "#FFFFFF" }}>Add</button>
             </div>
+          </div>
+        </div>
+
+        {/* ── YouTube / Video Reviews & Walkthroughs (Item 5) ── */}
+        <div className="rounded-2xl p-6 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-base">🎥</span>
+              <h2 className="text-sm font-bold" style={{ color: "#1F2937" }}>YouTube / Video Reviews &amp; Walkthroughs</h2>
+            </div>
+            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>
+              Add YouTube video reviews, buyer testimonials, or expert influencer walkthroughs for this property/project. These will appear as video cards on the public page.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {(form.videoReviews || []).map((rev) => (
+              <div key={rev._key} className="grid grid-cols-1 sm:grid-cols-[1.5fr_1.5fr_1fr_auto] gap-2 items-center p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <TextInput
+                  value={rev.url}
+                  onChange={(e) => updateVideoReview(rev._key, "url", e.target.value)}
+                  placeholder="YouTube URL: https://youtube.com/watch?v=..."
+                />
+                <TextInput
+                  value={rev.title}
+                  onChange={(e) => updateVideoReview(rev._key, "title", e.target.value)}
+                  placeholder="Review Title (e.g. 3BHK Sample Flat Tour)"
+                />
+                <TextInput
+                  value={rev.reviewer}
+                  onChange={(e) => updateVideoReview(rev._key, "reviewer", e.target.value)}
+                  placeholder="Reviewer / Channel Name"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeVideoReview(rev._key)}
+                  className="text-xs font-bold px-2 py-2 text-red-600 hover:text-red-800"
+                >
+                  ✕ Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addVideoReview}
+              className="text-xs font-bold px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition"
+            >
+              + Add Video Review
+            </button>
           </div>
         </div>
 

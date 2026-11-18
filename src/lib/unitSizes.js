@@ -11,20 +11,36 @@ const num = (v) => {
 export function cleanUnitConfigs(list) {
   if (!Array.isArray(list)) return [];
   return list
-    .map((u) => ({
-      label: String(u?.label ?? "").trim(),
-      areaSqft: num(u?.areaSqft),
-      price: num(u?.price),
-    }))
-    .filter((u) => u.label && (u.areaSqft || u.price));
+    .map((u) => {
+      const carpetArea = num(u?.carpetArea ?? u?.ca);
+      const builtUpArea = num(u?.builtUpArea ?? u?.bua);
+      const superArea = num(u?.superArea ?? u?.superBuiltUpArea ?? u?.sa ?? u?.areaSqft);
+      const areaSqft = num(u?.areaSqft ?? superArea ?? builtUpArea ?? carpetArea);
+      const price = num(u?.price);
+      const priceRange = String(u?.priceRange ?? (u?.price ? formatPrice(u.price) : "")).trim();
+      return {
+        label: String(u?.label ?? "").trim(),
+        carpetArea: carpetArea || null,
+        builtUpArea: builtUpArea || null,
+        superArea: superArea || null,
+        areaSqft: areaSqft || null,
+        price: price || null,
+        priceRange: priceRange || "",
+      };
+    })
+    .filter((u) => u.label && (u.carpetArea || u.builtUpArea || u.superArea || u.areaSqft || u.price || u.priceRange));
 }
 
 // Database JSON -> editable rows (strings for inputs).
 export function unitConfigsForForm(raw) {
   return (Array.isArray(raw) ? raw : []).map((u) => ({
     label: u?.label || "",
+    carpetArea: u?.carpetArea != null ? String(u.carpetArea) : (u?.ca != null ? String(u.ca) : ""),
+    builtUpArea: u?.builtUpArea != null ? String(u.builtUpArea) : (u?.bua != null ? String(u.bua) : ""),
+    superArea: u?.superArea != null ? String(u.superArea) : (u?.superBuiltUpArea != null ? String(u.superBuiltUpArea) : (u?.sa != null ? String(u.sa) : (u?.areaSqft != null ? String(u.areaSqft) : ""))),
     areaSqft: u?.areaSqft != null ? String(u.areaSqft) : "",
     price: u?.price != null ? String(u.price) : "",
+    priceRange: u?.priceRange ? String(u.priceRange) : (u?.price ? formatPrice(u.price) : ""),
   }));
 }
 
