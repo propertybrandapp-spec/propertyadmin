@@ -14,8 +14,8 @@ const EMPTY_FORM = {
   author: "",
   image: "",
   tags: [],
-  readTimeMinutes: "",
-  status: "Draft",
+  readTimeMinutes: "5",
+  status: "Published",
 };
 
 function Field({ label, children, required }) {

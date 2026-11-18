@@ -649,3 +649,229 @@ export async function deleteBanner(id) {
   if (typeof window !== "undefined") localStorage.setItem(LOCAL_BANNERS_KEY, JSON.stringify(updated));
   return { error: null };
 }
+
+// ── Grihapravesh Sub-Services & Columns ──────────────────────────────────────
+const LOCAL_GRIHAPRAVESH_KEY = "propertybrands_grihapravesh_services";
+
+export const DEFAULT_GRIHAPRAVESH_SERVICES = [
+  {
+    id: "gp-1",
+    dbId: "gp-1",
+    title: "Vedic Pandit & Complete Grihapravesh Havan",
+    category: "Puja & Rituals",
+    description: "Vastu Shanti, Navagraha Puja, Ganesh Pujan, and sacred cow entry coordination conducted by senior certified Vedic Pandits.",
+    price: "Starts at ₹5,100",
+    inclusions: [
+      "Vastu Shanti & Navagraha Havan",
+      "Ganesh & Kuldevta Pujan",
+      "Vedic Astrologer Muhurat calculation",
+      "Havan Kund & ritual fire materials setup",
+      "Prasadam sanctification",
+    ],
+    icon: "🪔",
+    image: "https://images.unsplash.com/photo-1609137144822-0d65942475a8?w=600&auto=format&fit=crop&q=80",
+    popular: true,
+    active: true,
+    order: 1,
+  },
+  {
+    id: "gp-2",
+    dbId: "gp-2",
+    title: "Complete Organic Puja Samagri & Essentials Kit",
+    category: "Puja & Rituals",
+    description: "All-in-one pre-packaged, authenticated 108 sacred puja items delivered to your doorstep 24 hours prior to muhurat.",
+    price: "Starts at ₹2,499",
+    inclusions: [
+      "Pure cow ghee & dry wood for havan",
+      "Navadhanya, Gangajal & Kalash kit",
+      "Toran, Rangoli powders & Diyas",
+      "Camphor, Loban & Guggal incense",
+      "Handmade cotton wicks & brass thali kit",
+    ],
+    icon: "✨",
+    image: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&auto=format&fit=crop&q=80",
+    popular: false,
+    active: true,
+    order: 2,
+  },
+  {
+    id: "gp-3",
+    dbId: "gp-3",
+    title: "Traditional Floral Decor & Doorway Toran",
+    category: "Decor & Ambience",
+    description: "Fresh marigold and mango leaf doorway entrance arches, handcrafted floral rangolis, and fragrant brass urli water bowls.",
+    price: "Starts at ₹4,500",
+    inclusions: [
+      "Fresh marigold doorway toran & pillars",
+      "Hand-crafted flower rangoli at entrance",
+      "Living room focal puja altar backdrop",
+      "Aromatic jasmine & rose petal bowl styling",
+      "Eco-friendly natural setup & post-event cleanup",
+    ],
+    icon: "🌸",
+    image: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600&auto=format&fit=crop&q=80",
+    popular: true,
+    active: true,
+    order: 3,
+  },
+  {
+    id: "gp-4",
+    dbId: "gp-4",
+    title: "Pre-Muhurat Deep Cleaning & Sanitization",
+    category: "Deep Cleaning & Moving",
+    description: "Intensive single-day deep cleaning of floors, windows, kitchen cabinets, bathrooms, and high ceilings before sacred entry.",
+    price: "Starts at ₹3,999",
+    inclusions: [
+      "Single-disc rotary floor scrub & buff",
+      "Kitchen degreasing & cabinet vacuuming",
+      "Bathroom descaling & sanitization",
+      "Glass window & sliding door track cleaning",
+      "Aromatic organic herbal smoke fumigation",
+    ],
+    icon: "🧹",
+    image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80",
+    popular: false,
+    active: true,
+    order: 4,
+  },
+  {
+    id: "gp-5",
+    dbId: "gp-5",
+    title: "Sattvic Feast Catering & Custom Sweet Boxes",
+    category: "Catering & Prasad",
+    description: "Freshly cooked traditional vegetarian feast (no onion/garlic options available) and custom-packed gift boxes for your guests.",
+    price: "Starts at ₹350 / plate",
+    inclusions: [
+      "Authentic sattvic vegetarian menu",
+      "Special Panchamrit & Mahaprasad preparation",
+      "Live counter for hot puris and delicacies",
+      "Personalized sweet boxes with custom thank-you tags",
+      "Professional eco-friendly service crew",
+    ],
+    icon: "🍲",
+    image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&auto=format&fit=crop&q=80",
+    popular: false,
+    active: true,
+    order: 5,
+  },
+  {
+    id: "gp-6",
+    dbId: "gp-6",
+    title: "Muhurat Day Shifting & Essentials Relocation",
+    category: "Deep Cleaning & Moving",
+    description: "Punctual transportation of your sacred deity, puja mandir, and essential first-night household baggage right on muhurat hour.",
+    price: "Starts at ₹4,999",
+    inclusions: [
+      "Dedicated closed vehicle on muhurat hour",
+      "Special protective velvet crating for Puja Mandir",
+      "Careful handling of first milk-boiling vessel & stove",
+      "Priority loading/unloading assistance",
+      "Zero delay commitment",
+    ],
+    icon: "🚚",
+    image: "https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=600&auto=format&fit=crop&q=80",
+    popular: false,
+    active: true,
+    order: 6,
+  },
+];
+
+function normalizeAdminGrihapravesh(row) {
+  return {
+    id: row.id,
+    dbId: row.id,
+    title: row.title,
+    category: row.category || "Puja & Rituals",
+    description: row.description || "",
+    price: row.price_label || "",
+    inclusions: Array.isArray(row.inclusions) ? row.inclusions : [],
+    icon: row.icon || "🪔",
+    image: row.image_url || "",
+    popular: !!row.is_popular,
+    active: row.is_active !== false,
+    order: row.display_order || 0,
+  };
+}
+
+export async function fetchAdminGrihapraveshServices() {
+  const { data, error } = await safeQuery(
+    supabase
+      .from("grihapravesh_services")
+      .select("*")
+      .order("display_order", { ascending: true })
+  );
+  if (!error && data && data.length > 0) {
+    return { data: data.map(normalizeAdminGrihapravesh), error: null };
+  }
+  const local = typeof window !== "undefined" ? localStorage.getItem(LOCAL_GRIHAPRAVESH_KEY) : null;
+  if (local) {
+    try {
+      const parsed = JSON.parse(local);
+      if (parsed.length > 0) return { data: parsed, error: null };
+    } catch {}
+  }
+  return { data: DEFAULT_GRIHAPRAVESH_SERVICES, error: null };
+}
+
+export async function createGrihapraveshService(item) {
+  const payload = {
+    title: item.title,
+    category: item.category || "Puja & Rituals",
+    description: item.description || "",
+    price_label: item.price || "",
+    inclusions: Array.isArray(item.inclusions) ? item.inclusions : [],
+    icon: item.icon || "🪔",
+    image_url: item.image || "",
+    is_popular: !!item.popular,
+    is_active: item.active !== false,
+    display_order: item.order || 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await safeQuery(
+    supabase.from("grihapravesh_services").insert(payload).select().single()
+  );
+  if (!error && data) {
+    return { data: normalizeAdminGrihapravesh(data), error: null };
+  }
+  const mockId = `gp-${Date.now()}`;
+  const newItem = { ...item, id: mockId, dbId: mockId };
+  const current = (await fetchAdminGrihapraveshServices()).data;
+  const updated = [...current, newItem];
+  if (typeof window !== "undefined") localStorage.setItem(LOCAL_GRIHAPRAVESH_KEY, JSON.stringify(updated));
+  return { data: newItem, error: null };
+}
+
+export async function updateGrihapraveshService(id, item) {
+  const payload = {
+    title: item.title,
+    category: item.category || "Puja & Rituals",
+    description: item.description || "",
+    price_label: item.price || "",
+    inclusions: Array.isArray(item.inclusions) ? item.inclusions : [],
+    icon: item.icon || "🪔",
+    image_url: item.image || "",
+    is_popular: !!item.popular,
+    is_active: item.active !== false,
+    display_order: item.order || 0,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await safeQuery(
+    supabase.from("grihapravesh_services").update(payload).eq("id", id).select().single()
+  );
+  if (!error && data) {
+    return { data: normalizeAdminGrihapravesh(data), error: null };
+  }
+  const current = (await fetchAdminGrihapraveshServices()).data;
+  const updated = current.map((s) => (s.id === id || s.dbId === id ? { ...s, ...item } : s));
+  if (typeof window !== "undefined") localStorage.setItem(LOCAL_GRIHAPRAVESH_KEY, JSON.stringify(updated));
+  return { data: { ...item, id, dbId: id }, error: null };
+}
+
+export async function deleteGrihapraveshService(id) {
+  await safeQuery(supabase.from("grihapravesh_services").delete().eq("id", id));
+  const current = (await fetchAdminGrihapraveshServices()).data;
+  const updated = current.filter((s) => s.id !== id && s.dbId !== id);
+  if (typeof window !== "undefined") localStorage.setItem(LOCAL_GRIHAPRAVESH_KEY, JSON.stringify(updated));
+  return { error: null };
+}

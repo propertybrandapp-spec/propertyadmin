@@ -2,7 +2,7 @@
 // The type dropdowns are normally driven by the database (listing_field_options).
 // Types listed here are always offered even if the database list predates them,
 // so e.g. "Duplex" can never go missing from the filter or the listing forms.
-export const ALWAYS_OFFERED_TYPES = ["Duplex"];
+export const ALWAYS_OFFERED_TYPES = ["Duplex", "Senior Housing", "Senior Living"];
 
 // Dropdown options: the database/default list plus the always-offered types.
 export function withExtraTypes(list) {
@@ -14,7 +14,11 @@ export function withExtraTypes(list) {
 // A listing's type is sometimes entered loosely (e.g. a duplex listed as "Villa"
 // or "Independent House"). For these types, also accept a listing whose title,
 // tags or description clearly say so, so filtering by "Duplex" finds them all.
-const KEYWORD_TYPES = { duplex: /\bduplex(es)?\b/i };
+const KEYWORD_TYPES = {
+  duplex: /\bduplex(es)?\b/i,
+  "senior housing": /\bsenior (housing|living)|retirement (home|community|living)\b/i,
+  "senior living": /\bsenior (housing|living)|retirement (home|community|living)\b/i,
+};
 
 export function matchesPropertyType(selectedTypes, p) {
   if (!selectedTypes || selectedTypes.length === 0) return true;

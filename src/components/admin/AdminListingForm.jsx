@@ -18,10 +18,10 @@ import { fetchAdminInvestmentOpportunities } from "../../lib/siteContent";
 // Fallback defaults — used until the dynamic options load (or if "Site
 // Content" → Listing Options is still empty). Manage the live lists from
 // that admin tab instead of editing these.
-const DEFAULT_PROPERTY_TYPES = ["Apartment", "Villa", "Independent House", "Duplex", "Plot", "Commercial", "Office Space", "Shop / Showroom", "Warehouse / Industrial Shed", "Farmhouse", "Penthouse", "Studio Apartment", "Agricultural Land", "Office", "Retail", "Industrial", "Co-living", "Student Accommodation"];
+const DEFAULT_PROPERTY_TYPES = ["Apartment", "Villa", "Independent House", "Duplex", "Senior Living", "Senior Housing", "Plot", "Commercial", "Office Space", "Shop / Showroom", "Warehouse / Industrial Shed", "Farmhouse", "Penthouse", "Studio Apartment", "Agricultural Land", "Office", "Retail", "Industrial", "Co-living", "Student Accommodation"];
 const DEFAULT_BHK_OPTIONS = ["1 RK", "1 BHK", "2 BHK", "3 BHK", "4 BHK", "5 BHK", "5+ BHK"];
-const DEFAULT_IDEAL_FOR_OPTIONS = ["Families", "Working Professionals", "Bachelors", "Students", "Retirees", "Doctors / Clinics", "Commercial Setup", "Investors / High ROI", "Startups", "Corporate Lease", "Couples"];
-const DEFAULT_TAGS_LIST = ["Luxury", "Affordable", "Gated Community", "Office", "Retail", "Industrial", "Co-living", "Student Accommodation", "New Launch", "Ready to Move", "RERA Approved", "Corner Plot", "Investment Opportunity"];
+const DEFAULT_IDEAL_FOR_OPTIONS = ["Families", "Working Professionals", "Bachelors", "Students", "Retirees", "Senior Citizens", "Doctors / Clinics", "Commercial Setup", "Investors / High ROI", "Startups", "Corporate Lease", "Couples"];
+const DEFAULT_TAGS_LIST = ["Luxury", "Affordable", "Gated Community", "Senior Living", "Senior-Friendly", "Office", "Retail", "Industrial", "Co-living", "Student Accommodation", "New Launch", "Ready to Move", "RERA Approved", "Corner Plot", "Investment Opportunity"];
 const DEFAULT_AMENITIES = ["Lift", "Parking", "Visitor Parking", "Power Backup", "Security", "24x7 Security", "CCTV", "Intercom", "Swimming Pool", "Gym", "Garden", "Club House", "Multipurpose Hall", "Indoor Games", "Kids Play Area", "Jogging Track", "Amphitheatre", "Yoga / Meditation Area", "Senior Citizen Sitout", "Cafeteria", "WiFi", "Housekeeping", "Fire Safety", "Rain Water Harvesting", "Sewage Treatment Plant", "Solar Water Heating", "EV Charging Point", "Water Softener Plant", "Vaastu Compliant", "Pet Friendly", "Gated Community"];
 const FACING_OPTIONS = ["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"];
 const DEFAULT_POSSESSION_OPTIONS = ["Ready to Move", "Under Construction", "New Launch"];

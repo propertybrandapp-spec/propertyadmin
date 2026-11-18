@@ -10,6 +10,7 @@ import {
   fetchAdminSiteSettings, updateSiteSettings,
   fetchAdminOfficeLocations, createOfficeLocation, updateOfficeLocation, deleteOfficeLocation,
   fetchAdminBanners, createBanner, updateBanner, deleteBanner,
+  fetchAdminGrihapraveshServices, createGrihapraveshService, updateGrihapraveshService, deleteGrihapraveshService,
 } from "../../lib/siteContent";
 import {
   FIELD_TYPES, fetchAdminListingFieldOptions, createListingFieldOption, updateListingFieldOption, deleteListingFieldOption,
@@ -21,6 +22,7 @@ const TABS = [
   { id: "hero", label: "Hero Content" },
   { id: "hero-cards", label: "Hero Cards" },
   { id: "banners", label: "Ad Banners" },
+  { id: "grihapravesh", label: "Grihapravesh Services" },
   { id: "settings", label: "Contact & Social" },
   { id: "listing-options", label: "Listing Options" },
   { id: "tiers", label: "Partner Tiers" },
@@ -1583,6 +1585,299 @@ function BannersPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Grihapravesh Sub-Services Panel & Form
+// ═══════════════════════════════════════════════════════════════════════════
+
+const GRIHAPRAVESH_CATEGORIES = [
+  "Puja & Rituals",
+  "Decor & Ambience",
+  "Catering & Prasad",
+  "Deep Cleaning & Moving",
+  "Auspicious Muhurat & Astrologer",
+  "Photography & Memory",
+];
+
+const EMPTY_GRIHAPRAVESH = {
+  title: "",
+  category: "Puja & Rituals",
+  description: "",
+  price: "Starts at ₹4,999",
+  inclusions: [],
+  icon: "🪔",
+  image: "",
+  popular: false,
+  active: true,
+  order: 0,
+};
+
+function GrihapraveshForm({ initial, onCancel, onSaved }) {
+  const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validationError = validateImageFile(file);
+    if (validationError) { setError(validationError); return; }
+    setUploading(true); setError("");
+    const { url, error: uploadError } = await uploadToR2(file, "listings");
+    setUploading(false);
+    if (uploadError) { setError("Image upload failed."); return; }
+    setForm({ ...form, image: url });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.title.trim()) { setError("Service title is required."); return; }
+    setSaving(true); setError("");
+    const fn = form.dbId ? updateGrihapraveshService(form.dbId, form) : createGrihapraveshService(form);
+    const { data, error } = await fn;
+    setSaving(false);
+    if (error) { setError("Couldn't save Grihapravesh service."); return; }
+    onSaved(data);
+  }
+
+  return (
+    <Card>
+      <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
+        <h3 className="text-sm font-bold" style={{ color: "#1F2937" }}>
+          {form.dbId ? "Edit Grihapravesh Sub-Service" : "New Grihapravesh Sub-Service"}
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Service Title">
+            <TextInput
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="e.g. Vedic Pandit & Complete Grihapravesh Havan"
+              required
+            />
+          </Field>
+          <Field label="Category / Vertical">
+            <select
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="w-full text-xs font-semibold px-3 py-2 rounded-lg"
+              style={inputStyle}
+            >
+              {GRIHAPRAVESH_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Field label="Price / Estimate Label">
+            <TextInput
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              placeholder="e.g. Starts at ₹5,100"
+            />
+          </Field>
+          <Field label="Emoji Icon">
+            <TextInput
+              value={form.icon}
+              onChange={(e) => setForm({ ...form, icon: e.target.value })}
+              placeholder="e.g. 🪔 or 🌸"
+            />
+          </Field>
+          <Field label="Display Order">
+            <TextInput
+              type="number"
+              value={form.order}
+              onChange={(e) => setForm({ ...form, order: parseInt(e.target.value) || 0 })}
+            />
+          </Field>
+        </div>
+
+        <Field label="Overview & Scope of Service">
+          <TextArea
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Details about what is delivered, who coordinates, and why it is essential for new homeowners..."
+          />
+        </Field>
+
+        <Field label="Inclusions & Deliverables (Columns / Checklist)">
+          <StringListEditor
+            items={form.inclusions}
+            onChange={(inclusions) => setForm({ ...form, inclusions })}
+          />
+        </Field>
+
+        <Field label="Cover Image">
+          <div className="space-y-2">
+            <div className="flex gap-2 items-center flex-wrap">
+              <TextInput
+                value={form.image}
+                onChange={(e) => setForm({ ...form, image: e.target.value })}
+                placeholder="https://... or upload below"
+              />
+              <label
+                className="text-xs font-bold px-3 py-2 rounded-lg cursor-pointer shrink-0"
+                style={{ background: "#F1F5F9", color: "#1F2937" }}
+              >
+                {uploading ? "Uploading…" : "Upload"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                  disabled={uploading}
+                />
+              </label>
+            </div>
+            {form.image && (
+              <img
+                src={form.image}
+                alt="Preview"
+                className="w-full max-w-sm h-32 object-cover rounded-xl border border-slate-200"
+              />
+            )}
+          </div>
+        </Field>
+
+        <div className="flex items-center gap-6 pt-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.popular}
+              onChange={(e) => setForm({ ...form, popular: e.target.checked })}
+              className="rounded"
+            />
+            <span className="text-xs font-bold" style={{ color: "#1F2937" }}>
+              Mark as Popular / Most Requested
+            </span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) => setForm({ ...form, active: e.target.checked })}
+              className="rounded"
+            />
+            <span className="text-xs font-bold" style={{ color: "#1F2937" }}>
+              Active on Website
+            </span>
+          </label>
+        </div>
+
+        <SaveBar onCancel={onCancel} saving={saving} error={error} />
+      </form>
+    </Card>
+  );
+}
+
+function GrihapraveshPanel() {
+  const [items, setItems] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
+
+  function load() {
+    fetchAdminGrihapraveshServices().then(({ data }) => setItems(data));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function toggleActive(item) {
+    await updateGrihapraveshService(item.id || item.dbId, { ...item, active: !item.active });
+    load();
+  }
+
+  async function handleDelete(id) {
+    await deleteGrihapraveshService(id);
+    setConfirmId(null);
+    load();
+  }
+
+  if (editing) {
+    return (
+      <GrihapraveshForm
+        initial={editing}
+        onCancel={() => setEditing(null)}
+        onSaved={() => { setEditing(null); load(); }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-base font-bold" style={{ color: "#1F2937" }}>
+            Grihapravesh Services & Sub-Services
+          </h2>
+          <p className="text-xs" style={{ color: "#6B7280" }}>
+            Manage Pandit booking, puja samagri, traditional decor, pre-muhurat cleaning, and catering sub-services
+          </p>
+        </div>
+        <button
+          onClick={() => setEditing(EMPTY_GRIHAPRAVESH)}
+          className="text-xs font-bold px-3 py-2 rounded-xl text-white transition-opacity hover:opacity-90 cursor-pointer"
+          style={{ background: "#1565C0" }}
+        >
+          + Add Sub-Service
+        </button>
+      </div>
+
+      {items === null && <p className="text-xs" style={{ color: "#6B7280" }}>Loading sub-services…</p>}
+      {items && items.length === 0 && <EmptyState label="No Grihapravesh sub-services yet. Click '+ Add Sub-Service' to create one." />}
+
+      {items && items.map((s) => (
+        <Card key={s.id || s.dbId}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex gap-4 items-start min-w-0">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-2xl shrink-0">
+                {s.icon || "🪔"}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm font-bold truncate" style={{ color: "#1F2937" }}>
+                    {s.title}
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                    {s.category}
+                  </span>
+                  {s.popular && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      ★ Popular
+                    </span>
+                  )}
+                  <ActivePill active={s.active} />
+                </div>
+                <p className="text-xs mt-1" style={{ color: "#6B7280" }}>
+                  {s.description}
+                </p>
+                <div className="flex items-center gap-4 mt-2 text-xs flex-wrap">
+                  <span className="font-bold text-[#1565C0]">{s.price}</span>
+                  {s.inclusions && s.inclusions.length > 0 && (
+                    <span className="text-slate-500">
+                      ✓ {s.inclusions.length} deliverables / inclusions configured
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <RowActions
+              active={s.active}
+              onEdit={() => setEditing(s)}
+              onToggle={() => toggleActive(s)}
+              onDelete={() => handleDelete(s.id || s.dbId)}
+              confirming={confirmId === (s.id || s.dbId)}
+              setConfirming={(v) => setConfirmId(v ? (s.id || s.dbId) : null)}
+            />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Export
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1617,6 +1912,7 @@ export default function AdminSiteContent({ onNavigate, onLogout, adminProfile })
       {activeTab === "hero" && <HeroContentPanel />}
       {activeTab === "hero-cards" && <HeroCardsPanel />}
       {activeTab === "banners" && <BannersPanel />}
+      {activeTab === "grihapravesh" && <GrihapraveshPanel />}
       {activeTab === "settings" && <SettingsPanel />}
       {activeTab === "listing-options" && <ListingOptionsPanel />}
       {activeTab === "tiers" && <TiersPanel />}
