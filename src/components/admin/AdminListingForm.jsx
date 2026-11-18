@@ -1,4 +1,5 @@
 import ProjectExtrasFields from "./ProjectExtrasFields";
+import FormattedContent from "./FormattedContent";
 import { useState, useEffect, useRef } from "react";
 import AdminLayout from "./AdminLayout";
 import { createListing, updateListing, deleteListing, LANDMARK_CATEGORIES } from "../../lib/listings";
@@ -1600,15 +1601,30 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
             </Field>
           </div>
 
-          <Field label="Description">
+          <Field
+            label="Description"
+            hint="Supports paragraphs, numbered lists (1., 2.), bullets (•, -, *), and bold (**text**). Automatically formatted layer-by-layer on the website."
+          >
             <textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
               rows={4}
-              placeholder="A short description shown on the property detail page..."
+              placeholder="A description shown on the property detail page... e.g.
+Luxury apartment with premium specifications.
+• 100% Vastu compliant
+• High floor with park view
+• 2 covered car parkings"
               className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none"
               style={inputStyle}
             />
+            {form.description && (
+              <div className="mt-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
+                  <span>👁️</span> Public View Live Preview (Layer-by-Layer)
+                </p>
+                <FormattedContent text={form.description} />
+              </div>
+            )}
           </Field>
 
           <Field label="Why This Property? — Key Highlights" hint="3-5 short, concise reasons this property stands out — shown near the top of the public page.">
@@ -2100,18 +2116,31 @@ export default function AdminListingForm({ onNavigate, onLogout, adminProfile, e
               </Field>
             )}
 
-            <Field label="Project Overview & Vision (Project Description)" hint="Rich narrative describing the project concept, architecture, landscape, and lifestyle vision.">
+            <Field label="Project Overview & Vision (Project Description)" hint="Rich narrative describing the project concept, architecture, landscape, and lifestyle vision. Automatically formatted layer-by-layer on the website.">
               <textarea value={form.projectDescription} onChange={(e) => set("projectDescription", e.target.value)} rows={3}
                 className="w-full text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-2 resize-none" style={inputStyle}
                 placeholder="e.g. Designed by renowned architects, this landmark project blends biophilic architecture with high-luxury smart living..." />
+              {form.projectDescription && (
+                <div className="mt-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
+                    <span>👁️</span> Public View Live Preview
+                  </p>
+                  <FormattedContent text={form.projectDescription} />
+                </div>
+              )}
             </Field>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Overall Construction Progress (%)" hint="0 to 100% progress bar on listing page">
                 <TextInput type="number" min="0" max="100" value={form.constructionPercent} onChange={(e) => set("constructionPercent", e.target.value)} placeholder="e.g. 78" />
               </Field>
-              <Field label="Latest Construction Updates & Milestones" hint="Current on-ground status notes">
+              <Field label="Latest Construction Updates & Milestones" hint="Current on-ground status notes. Supports bullet or numbered updates.">
                 <TextInput value={form.constructionUpdates} onChange={(e) => set("constructionUpdates", e.target.value)} placeholder="e.g. Tower 2 14th slab casted. Interior work in progress." />
+                {form.constructionUpdates && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <FormattedContent text={form.constructionUpdates} />
+                  </div>
+                )}
               </Field>
             </div>
 
